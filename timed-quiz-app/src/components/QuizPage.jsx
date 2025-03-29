@@ -1,8 +1,10 @@
 // src/components/QuizPage.jsx
 import React, { useEffect } from "react"
 import { questions } from "../data/questions"
+import { doc, setDoc } from "firebase/firestore"
+import { db } from "../utils/firebase"
 
-const QuizPage = ({ answers, setAnswers, timeLeft, setTimeLeft, onSubmit }) => {
+const QuizPage = ({ answers, setAnswers, timeLeft, setTimeLeft, onSubmit, user }) => {
   useEffect(() => {
     if (timeLeft > 0) {
       const timer = setInterval(() => setTimeLeft((t) => t - 1), 1000)
@@ -12,10 +14,19 @@ const QuizPage = ({ answers, setAnswers, timeLeft, setTimeLeft, onSubmit }) => {
     }
   }, [timeLeft, setTimeLeft, onSubmit])
 
-  const handleAnswer = (index, answer) => {
+  const handleAnswer = async (index, answer) => {
     const updated = [...answers]
     updated[index] = answer
     setAnswers(updated)
+
+    // 🔐 Save progress to Firestore
+    if (user?.uid) {
+      await setDoc(
+        doc(db, "quiz_responses", user.uid),
+        { answers: updated },
+        { merge: true }
+      )
+    }
   }
 
   return (

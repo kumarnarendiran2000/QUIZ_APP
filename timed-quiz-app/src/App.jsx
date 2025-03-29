@@ -5,7 +5,7 @@ import UserForm from "./components/UserForm"
 import QuizPage from "./components/QuizPage"
 import ResultPage from "./components/ResultPage"
 import { db } from "./utils/firebase"
-import { doc, setDoc } from "firebase/firestore"
+import { doc, setDoc, getDoc } from "firebase/firestore"
 import { questions } from "./data/questions"
 
 const App = () => {
@@ -13,13 +13,64 @@ const App = () => {
   const [user, setUser] = useState(null)
   const [userInfo, setUserInfo] = useState({ name: "", mobile: "" })
   const [answers, setAnswers] = useState([])
-  const [timeLeft, setTimeLeft] = useState(1800)
+  const [timeLeft, setTimeLeft] = useState(300)
 
-  const startQuiz = () => setStep("quiz")
+  const handleLogin = async (loggedInUser) => {
+    const ref = doc(db, "quiz_responses", loggedInUser.uid)
+    const snap = await getDoc(ref)
 
-  const handleLogin = (loggedInUser) => {
+    if (snap.exists()) {
+      const data = snap.data()
+
+      // If quiz was submitted
+      if (data.score !== undefined) {
+        setUser(loggedInUser)
+        setUserInfo({ name: data.name, mobile: data.mobile })
+        setAnswers(data.answers || [])
+        setStep("result")
+        return
+      }
+
+      // If quiz already started and not submitted
+      if (data.startedAt) {
+        const elapsed = Math.floor((Date.now() - data.startedAt) / 1000)
+        const remaining = Math.max(300 - elapsed, 0)
+
+        if (remaining > 0) {
+          setUser(loggedInUser)
+          setUserInfo({ name: data.name || "", mobile: data.mobile || "" })
+          setAnswers(data.answers || [])
+          setTimeLeft(remaining)
+          setStep("quiz")
+          return
+        }
+      }
+    }
+
+    // Default: new user or fresh start
     setUser(loggedInUser)
     setStep("form")
+  }
+
+  const startQuiz = async () => {
+    if (user) {
+      const ref = doc(db, "quiz_responses", user.uid)
+      await setDoc(
+        ref,
+        {
+          name: userInfo.name,
+          email: user.email,
+          mobile: userInfo.mobile,
+          startedAt: Date.now(),
+          answers: [],
+        },
+        { merge: true }
+      )
+    }
+
+    setTimeLeft(300)
+    setAnswers([])
+    setStep("quiz")
   }
 
   const handleSubmit = async () => {
@@ -59,6 +110,7 @@ const App = () => {
           timeLeft={timeLeft}
           setTimeLeft={setTimeLeft}
           onSubmit={handleSubmit}
+          user={user} // <-- this!
         />
       )}
       {step === "result" && (
