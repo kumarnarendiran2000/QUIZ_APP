@@ -45,7 +45,7 @@ const QuizPage = ({ answers, setAnswers, timeLeft, setTimeLeft, onSubmit, user }
               <input
                 type="radio"
                 name={`q${index}`}
-                checked={answers[index] === i}
+                checked={answers[index] !== null && answers[index] === i}
                 onChange={() => handleAnswer(index, i)}
               />{" "}
               {opt}

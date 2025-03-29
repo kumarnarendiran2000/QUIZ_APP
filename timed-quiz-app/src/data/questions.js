@@ -10,5 +10,15 @@ export const questions = [
       options: ["Venus", "Mars", "Jupiter", "Saturn"],
       answer: 1,
     },
+    {
+      question: "What is H2O?",
+      options: ["Salt", "Water", "Oxygen", "Hydrogen"],
+      answer: 2,
+    },
+    {
+      question: "Who painted the Mona Lisa?",
+      options: ["Picasso", "Van Gogh", "Leonardo da Vinci", "Michelangelo"],
+      answer: 3,
+    },
     // Add more questions here
   ]
