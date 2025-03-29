@@ -1,7 +1,8 @@
 // src/components/UserForm.jsx
-import React from "react"
+import React, { useState } from "react"
 
 const UserForm = ({ userInfo, setUserInfo, onStartQuiz }) => {
+  const [isLoading, setIsLoading] = useState(false)
   return (
     <div className="max-w-xl mx-auto mt-10 p-4 border rounded">
       <h2 className="text-xl font-bold mb-4">Enter your details</h2>
@@ -21,11 +22,14 @@ const UserForm = ({ userInfo, setUserInfo, onStartQuiz }) => {
       />
 
       <button
-        onClick={onStartQuiz}
-        disabled={!userInfo.name || !userInfo.mobile}
-        className="bg-green-600 text-white px-4 py-2 rounded"
+        onClick={() => {
+          setIsLoading(true)
+          onStartQuiz()
+        }}
+        disabled={!userInfo.name || !userInfo.mobile || isLoading}
+        className="bg-green-600 text-white px-4 py-2 rounded cursor-pointer"
       >
-        Start Quiz
+        {isLoading ? "Starting..." : "Start Quiz"}
       </button>
     </div>
   )

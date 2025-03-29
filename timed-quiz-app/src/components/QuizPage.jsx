@@ -1,10 +1,12 @@
 // src/components/QuizPage.jsx
-import React, { useEffect } from "react"
+import React, { useEffect, useState } from "react"
 import { questions } from "../data/questions"
 import { doc, setDoc } from "firebase/firestore"
 import { db } from "../utils/firebase"
 
 const QuizPage = ({ answers, setAnswers, timeLeft, setTimeLeft, onSubmit, user }) => {
+  const [submitting, setSubmitting] = useState(false)
+
   useEffect(() => {
     if (timeLeft > 0) {
       const timer = setInterval(() => setTimeLeft((t) => t - 1), 1000)
@@ -54,8 +56,15 @@ const QuizPage = ({ answers, setAnswers, timeLeft, setTimeLeft, onSubmit, user }
         </div>
       ))}
 
-      <button onClick={onSubmit} className="bg-blue-600 text-white px-4 py-2 rounded">
-        Submit
+      <button
+        onClick={() => {
+          setSubmitting(true)
+          onSubmit()
+        }}
+        disabled={submitting}
+        className="bg-blue-600 text-white px-4 py-2 rounded cursor-pointer"
+      >
+        {submitting ? "Submitting..." : "Submit"}
       </button>
     </div>
   )
