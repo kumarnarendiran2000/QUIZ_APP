@@ -79,9 +79,9 @@ const App = () => {
       await setDoc(
         ref,
         {
-          name: userInfo.name,
-          email: user.email,
-          mobile: userInfo.mobile,
+        name: userInfo.name,
+        email: user.email,
+        mobile: userInfo.mobile,
           startedAt: Date.now(),
           answers: initialAnswers,
         },
@@ -116,6 +116,8 @@ const App = () => {
     })
   
     const wrongCount = questions.length - correctCount
+    const answeredCount = answers.filter((a) => typeof a === "number").length
+    const unansweredCount = questions.length - answeredCount
   
     if (user) {
       const ref = doc(db, "quiz_responses", user.uid)
@@ -126,6 +128,8 @@ const App = () => {
           email: user.email,
           mobile: userInfo.mobile,
           answers,
+          answeredCount,
+          unansweredCount,
           score: correctCount,
           correctCount,
           wrongCount,

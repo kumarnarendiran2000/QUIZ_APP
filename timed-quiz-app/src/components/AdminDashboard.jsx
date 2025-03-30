@@ -29,7 +29,7 @@ const AdminDashboard = () => {
   }, [])
 
   return (
-    <div className="max-w-7xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
+    <div className="max-w-8xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
       <h2 className="text-4xl font-bold mb-6 border-b pb-2 text-gray-800">
         🧾 Admin Dashboard
       </h2>
@@ -46,6 +46,8 @@ const AdminDashboard = () => {
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Mobile</th>
+                <th className="px-4 py-3">Answered</th>
+                <th className="px-4 py-3">Unanswered</th>
                 <th className="px-4 py-3">Score</th>
                 <th className="px-4 py-3 text-green-700">Correct</th>
                 <th className="px-4 py-3 text-red-700">Wrong</th>
@@ -59,6 +61,8 @@ const AdminDashboard = () => {
                   <td className="px-4 py-2">{s.name}</td>
                   <td className="px-4 py-2">{s.email}</td>
                   <td className="px-4 py-2">{s.mobile}</td>
+                  <td className="px-4 py-2">{s.answeredCount}</td>
+                  <td className="px-4 py-2">{s.unansweredCount}</td>
                   <td className="px-4 py-2 font-semibold">{s.score}</td>
                   <td className="px-4 py-2 text-green-600">{s.correctCount}</td>
                   <td className="px-4 py-2 text-red-600">{s.wrongCount}</td>
@@ -87,6 +91,11 @@ const AdminDashboard = () => {
             ✅ Correct: <strong>{viewing.correctCount}</strong> | ❌ Wrong:{" "}
             <strong>{viewing.wrongCount}</strong>
           </p>
+
+          <p className="text-gray-700 mb-2">
+            🟦 Answered: <strong>{viewing.answeredCount}</strong> &nbsp;|&nbsp;
+            ⬜ Unanswered: <strong>{viewing.unansweredCount}</strong>
+        </p>
 
           {viewing.detailedResults?.map((r, index) => {
             const q = questions[r.q - 1]
