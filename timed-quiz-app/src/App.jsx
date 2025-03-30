@@ -94,22 +94,47 @@ const App = () => {
   }
 
   const handleSubmit = async () => {
-    const score = answers.reduce((total, ans, i) => {
-      return ans === null ? total : total + (ans === questions[i].answer ? 1 : 0)
-    }, 0)
-
+    let correctCount = 0
+    const detailedResults = []
+  
+    questions.forEach((q, i) => {
+      const selected = answers[i]
+      const correct = q.answer
+      const isCorrect = selected === correct
+  
+      if (selected !== null) {
+        detailedResults.push({
+          q: i + 1, // start from 1
+          selected,
+          correct,
+          isCorrect,
+        })
+  
+        if (isCorrect) correctCount++
+      }
+    })
+  
+    const wrongCount = questions.length - correctCount
+  
     if (user) {
       const ref = doc(db, "quiz_responses", user.uid)
-      await setDoc(ref, {
-        name: userInfo.name,
-        email: user.email,
-        mobile: userInfo.mobile,
-        answers,
-        score,
-        submittedAt: new Date().toISOString(),
-      })
+      await setDoc(
+        ref,
+        {
+          name: userInfo.name,
+          email: user.email,
+          mobile: userInfo.mobile,
+          answers,
+          score: correctCount,
+          correctCount,
+          wrongCount,
+          detailedResults,
+          submittedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      )
     }
-
+  
     setStep("result")
   }
 
