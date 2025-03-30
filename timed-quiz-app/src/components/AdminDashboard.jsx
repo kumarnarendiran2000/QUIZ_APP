@@ -6,7 +6,7 @@ import { questions } from "../data/questions"
 const AdminDashboard = () => {
   const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(true)
-  const [viewing, setViewing] = useState(null) // ← For viewing one result
+  const [viewing, setViewing] = useState(null)
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -29,42 +29,44 @@ const AdminDashboard = () => {
   }, [])
 
   return (
-    <div className="max-w-6xl mx-auto mt-10 p-4">
-      <h2 className="text-2xl font-bold mb-4">Admin Dashboard</h2>
+    <div className="max-w-7xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
+      <h2 className="text-4xl font-bold mb-6 border-b pb-2 text-gray-800">
+        🧾 Admin Dashboard
+      </h2>
 
       {loading ? (
-        <p className="text-center text-gray-500">Loading submissions...</p>
+        <p className="text-center text-gray-500 text-lg">Loading submissions...</p>
       ) : submissions.length === 0 ? (
-        <p className="text-center text-gray-500">No submissions found yet.</p>
+        <p className="text-center text-gray-500 text-lg">No submissions found yet.</p>
       ) : (
-        <div className="overflow-x-auto border rounded mb-8">
-          <table className="min-w-full text-sm text-left">
-            <thead className="bg-gray-100">
+        <div className="overflow-x-auto border rounded-md">
+          <table className="min-w-full text-xl text-left">
+            <thead className="bg-gray-100 text-gray-700 uppercase text-xs font-semibold">
               <tr>
-                <th className="p-2">Name</th>
-                <th className="p-2">Email</th>
-                <th className="p-2">Score</th>
-                <th className="p-2">Correct</th>
-                <th className="p-2">Wrong</th>
-                <th className="p-2">Submitted At</th>
-                <th className="p-2">Action</th>
+                <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Email</th>
+                <th className="px-4 py-3">Mobile</th>
+                <th className="px-4 py-3">Score</th>
+                <th className="px-4 py-3 text-green-700">Correct</th>
+                <th className="px-4 py-3 text-red-700">Wrong</th>
+                <th className="px-4 py-3">Submitted At</th>
+                <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
             <tbody>
               {submissions.map((s) => (
-                <tr key={s.id} className="border-t hover:bg-gray-50">
-                  <td className="p-2">{s.name}</td>
-                  <td className="p-2">{s.email}</td>
-                  <td className="p-2">{s.score}</td>
-                  <td className="p-2 text-green-600">{s.correctCount}</td>
-                  <td className="p-2 text-red-600">{s.wrongCount}</td>
-                  <td className="p-2">
-                    {new Date(s.submittedAt).toLocaleString()}
-                  </td>
-                  <td className="p-2">
+                <tr key={s.id} className="border-t hover:bg-gray-50 text-gray-800">
+                  <td className="px-4 py-2">{s.name}</td>
+                  <td className="px-4 py-2">{s.email}</td>
+                  <td className="px-4 py-2">{s.mobile}</td>
+                  <td className="px-4 py-2 font-semibold">{s.score}</td>
+                  <td className="px-4 py-2 text-green-600">{s.correctCount}</td>
+                  <td className="px-4 py-2 text-red-600">{s.wrongCount}</td>
+                  <td className="px-4 py-2">{new Date(s.submittedAt).toLocaleString()}</td>
+                  <td className="px-4 py-2">
                     <button
-                      className="text-blue-600 underline cursor-pointer"
                       onClick={() => setViewing(s)}
+                      className="text-blue-600 underline hover:text-blue-800 text-sm"
                     >
                       View Result
                     </button>
@@ -77,11 +79,11 @@ const AdminDashboard = () => {
       )}
 
       {viewing && (
-        <div className="bg-white border rounded p-4 shadow-md">
-          <h3 className="text-xl font-bold mb-2">
-            Result: {viewing.name} ({viewing.email})
+        <div className="mt-8 p-6 border border-gray-300 rounded-md bg-gray-50">
+          <h3 className="text-xl font-bold mb-2 text-gray-800">
+            Result for: {viewing.name} ({viewing.email}) - Mobile: {viewing.mobile}
           </h3>
-          <p className="mb-2">
+          <p className="mb-4 text-gray-700">
             ✅ Correct: <strong>{viewing.correctCount}</strong> | ❌ Wrong:{" "}
             <strong>{viewing.wrongCount}</strong>
           </p>
@@ -91,22 +93,22 @@ const AdminDashboard = () => {
             return (
               <div
                 key={index}
-                className={`mb-3 p-3 rounded border ${
-                  r.isCorrect ? "border-green-400 bg-green-50" : "border-red-400 bg-red-50"
+                className={`mb-4 p-4 rounded-md border ${
+                  r.isCorrect ? "border-green-300 bg-green-50" : "border-red-300 bg-red-50"
                 }`}
               >
-                <h4 className="font-semibold mb-1">
+                <h4 className="font-semibold mb-2 text-gray-800">
                   Q{r.q}. {q.question}
                 </h4>
                 {q.options.map((opt, i) => (
                   <div key={i} className="ml-4">
                     <span
-                      className={`${
+                      className={`text-sm ${
                         r.correct === i
-                          ? "font-bold text-green-600"
+                          ? "font-bold text-green-700"
                           : r.selected === i
                           ? "text-red-500"
-                          : ""
+                          : "text-gray-700"
                       }`}
                     >
                       {i + 1}. {opt}
@@ -120,8 +122,8 @@ const AdminDashboard = () => {
           })}
 
           <button
-            className="mt-4 text-sm text-gray-600 underline"
             onClick={() => setViewing(null)}
+            className="mt-4 text-sm text-gray-600 underline hover:text-gray-800"
           >
             ← Close Result View
           </button>

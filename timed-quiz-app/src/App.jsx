@@ -5,6 +5,7 @@ import UserForm from "./components/UserForm"
 import QuizPage from "./components/QuizPage"
 import ResultPage from "./components/ResultPage"
 import AdminDashboard from "./components/AdminDashboard"
+import Layout from "./components/Layout"
 import { db } from "./utils/firebase"
 import { doc, setDoc, getDoc } from "firebase/firestore"
 import { questions } from "./data/questions"
@@ -139,7 +140,7 @@ const App = () => {
   }
 
   return (
-    <>
+    <Layout>
       {step === "login" && <Login onLogin={handleLogin} />}
       {step === "form" && (
         <UserForm
@@ -166,7 +167,7 @@ const App = () => {
         />
       )}
       {step === "admin" && <AdminDashboard />}
-    </>
+    </Layout>
   )
 }
 
