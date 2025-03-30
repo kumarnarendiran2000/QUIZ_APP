@@ -4,6 +4,7 @@ import Login from "./components/Login"
 import UserForm from "./components/UserForm"
 import QuizPage from "./components/QuizPage"
 import ResultPage from "./components/ResultPage"
+import AdminDashboard from "./components/AdminDashboard"
 import { db } from "./utils/firebase"
 import { doc, setDoc, getDoc } from "firebase/firestore"
 import { questions } from "./data/questions"
@@ -16,8 +17,15 @@ const App = () => {
   const [userInfo, setUserInfo] = useState({ name: "", mobile: "" })
   const [answers, setAnswers] = useState([])
   const [timeLeft, setTimeLeft] = useState(QUIZ_DURATION)
+  const ADMIN_EMAIL = "kumarnarendiran2211@gmail.com"
 
   const handleLogin = async (loggedInUser) => {
+    if (loggedInUser.email === ADMIN_EMAIL) {
+      setUser(loggedInUser)
+      setStep("admin")
+      return
+    }
+  
     const ref = doc(db, "quiz_responses", loggedInUser.uid)
     const snap = await getDoc(ref)
 
@@ -48,7 +56,6 @@ const App = () => {
           for (let i = 0; i < saved.length; i++) {
             normalized[i] = saved[i]
           }
-          console.log("RESUMED ANSWERS:", normalized)
           setAnswers(normalized)
 
           setTimeLeft(remaining)
@@ -57,8 +64,8 @@ const App = () => {
         }
       }
     }
-
-    // Default: new user or fresh start
+  
+    // New user (non-admin)
     setUser(loggedInUser)
     setStep("form")
   }
@@ -133,6 +140,7 @@ const App = () => {
           answers={answers}
         />
       )}
+      {step === "admin" && <AdminDashboard />}
     </>
   )
 }
