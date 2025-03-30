@@ -45,6 +45,10 @@ const QuizPage = ({ answers, setAnswers, timeLeft, setTimeLeft, onSubmit, user }
         </div>
       </div>
 
+      <div className="text-center text-gray-600 mb-4 text-base">
+        Answered: {answers.filter((a) => typeof a === "number").length} / {questions.length}
+      </div>
+
       {/* Quiz Questions */}
       <div className="5">
         {questions.map((q, index) => (

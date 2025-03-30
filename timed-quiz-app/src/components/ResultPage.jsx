@@ -36,6 +36,10 @@ const ResultPage = ({ userInfo, userEmail, answers }) => {
           ✅ Correct: <span className="text-green-600 font-semibold">{correct}</span> &nbsp;|&nbsp;
           ❌ Wrong: <span className="text-red-600 font-semibold">{wrong}</span>
         </p>
+        <p>
+        🟦 Answered: <strong>{answers.filter((a) => typeof a === "number").length}</strong> &nbsp;|&nbsp;
+        ⬜ Unanswered: <strong>{questions.length - answers.filter((a) => typeof a === "number").length}</strong>
+      </p>
       </div>
 
       <div className="mt-6 space-y-5">
