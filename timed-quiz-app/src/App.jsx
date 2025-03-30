@@ -17,10 +17,10 @@ const App = () => {
   const [userInfo, setUserInfo] = useState({ name: "", mobile: "" })
   const [answers, setAnswers] = useState([])
   const [timeLeft, setTimeLeft] = useState(QUIZ_DURATION)
-  const ADMIN_EMAIL = "kumarnarendiran2211@gmail.com"
+  const ADMIN_EMAILS = ["kumarnarendiran2211@gmail.com", "kumargowtham1994@gmail.com"]
 
   const handleLogin = async (loggedInUser) => {
-    if (loggedInUser.email === ADMIN_EMAIL) {
+    if (ADMIN_EMAILS.includes(loggedInUser.email)) {
       setUser(loggedInUser)
       setStep("admin")
       return
