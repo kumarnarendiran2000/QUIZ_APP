@@ -1,5 +1,5 @@
 // src/App.jsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Login from "./components/Login";
 import UserForm from "./components/UserForm";
 import QuizPage from "./components/QuizPage";
@@ -23,6 +23,10 @@ const App = () => {
     "kumargowtham1994@gmail.com",
   ];
   const [detailedResults, setDetailedResults] = useState([]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [step]);
 
   const handleLogin = async (loggedInUser) => {
     if (ADMIN_EMAILS.includes(loggedInUser.email)) {
