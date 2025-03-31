@@ -1,38 +1,38 @@
 // src/components/UserForm.jsx
-import React, { useState } from "react"
+import React, { useState } from "react";
 
 const UserForm = ({ userInfo, setUserInfo, onStartQuiz }) => {
-  const [errors, setErrors] = useState({ name: "", mobile: "" })
-  const [submitting, setSubmitting] = useState(false)
+  const [errors, setErrors] = useState({ name: "", mobile: "" });
+  const [submitting, setSubmitting] = useState(false);
 
   const validate = () => {
-    const newErrors = { name: "", mobile: "" }
-    const nameRegex = /^[a-zA-Z\s]+$/
-    const mobileRegex = /^[0-9]{10}$/
+    const newErrors = { name: "", mobile: "" };
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    const mobileRegex = /^[0-9]{10}$/;
 
     if (!userInfo.name.trim()) {
-      newErrors.name = "Name is required"
+      newErrors.name = "Name is required";
     } else if (!nameRegex.test(userInfo.name)) {
-      newErrors.name = "Name can only contain letters"
+      newErrors.name = "Name can only contain letters";
     }
 
     if (!userInfo.mobile.trim()) {
-      newErrors.mobile = "Mobile number is required"
+      newErrors.mobile = "Mobile number is required";
     } else if (!mobileRegex.test(userInfo.mobile)) {
-      newErrors.mobile = "Mobile must be 10 digits"
+      newErrors.mobile = "Mobile must be 10 digits";
     }
 
-    setErrors(newErrors)
-    return !newErrors.name && !newErrors.mobile
-  }
+    setErrors(newErrors);
+    return !newErrors.name && !newErrors.mobile;
+  };
 
   const handleSubmit = (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (validate()) {
-      setSubmitting(true)
-      onStartQuiz()
+      setSubmitting(true);
+      onStartQuiz();
     }
-  }
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
@@ -73,7 +73,9 @@ const UserForm = ({ userInfo, setUserInfo, onStartQuiz }) => {
             id="mobile"
             maxLength={10}
             value={userInfo.mobile}
-            onChange={(e) => setUserInfo({ ...userInfo, mobile: e.target.value })}
+            onChange={(e) =>
+              setUserInfo({ ...userInfo, mobile: e.target.value })
+            }
             className={`w-full px-4 py-2 rounded border text-lg focus:outline-none ${
               errors.mobile
                 ? "border-red-500 bg-red-50"
@@ -98,7 +100,7 @@ const UserForm = ({ userInfo, setUserInfo, onStartQuiz }) => {
         </button>
       </form>
     </div>
-  )
-}
+  );
+};
 
-export default UserForm
+export default UserForm;
