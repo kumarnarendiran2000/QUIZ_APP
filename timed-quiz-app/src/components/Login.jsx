@@ -36,7 +36,7 @@ const Login = ({ onLogin }) => {
             After logging in, fill in your <strong>name and mobile number</strong> to begin.
           </li>
           <li>
-            The quiz is <strong>time-based</strong> — you’ll have <span className="text-blue-700 font-medium">7 minutes</span> to answer <strong>7 questions</strong>.
+            The quiz is <strong>time-based</strong> — you’ll have <span className="text-blue-700 font-medium">7 minutes</span> to answer <strong>6 questions</strong>.
           </li>
           <li>
             ❗ Once the quiz starts, <strong>do not switch tabs</strong> or reload the page.

@@ -2,24 +2,11 @@
 import React from "react"
 import { questions } from "../data/questions"
 
-const ResultPage = ({ userInfo, userEmail, answers }) => {
-  let correct = 0
-  const detailed = questions.map((q, i) => {
-    const selected = answers[i]
-    const isCorrect = selected === q.answer
-    if (isCorrect) correct++
-
-    return {
-      q: i + 1,
-      question: q.question,
-      options: q.options,
-      correctAnswer: q.answer,
-      selectedAnswer: selected,
-      isCorrect,
-    }
-  })
-
-  const wrong = questions.length - correct
+const ResultPage = ({ userInfo, userEmail, answers, detailedResults }) => {
+  const correct = detailedResults.filter((r) => r.isCorrect).length
+  const wrong = detailedResults.length - correct
+  const answeredCount = answers.filter((a) => typeof a === "number").length
+  const unansweredCount = questions.length - answeredCount
 
   return (
     <div className="max-w-5xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
@@ -37,13 +24,13 @@ const ResultPage = ({ userInfo, userEmail, answers }) => {
           ❌ Wrong: <span className="text-red-600 font-semibold">{wrong}</span>
         </p>
         <p>
-        🟦 Answered: <strong>{answers.filter((a) => typeof a === "number").length}</strong> &nbsp;|&nbsp;
-        ⬜ Unanswered: <strong>{questions.length - answers.filter((a) => typeof a === "number").length}</strong>
-      </p>
+          🟦 Answered: <strong>{answeredCount}</strong> &nbsp;|&nbsp;
+          ⬜ Unanswered: <strong>{unansweredCount}</strong>
+        </p>
       </div>
 
       <div className="mt-6 space-y-5">
-        {detailed.map((item, i) => (
+        {detailedResults.map((item, i) => (
           <div
             key={i}
             className={`p-4 rounded-md border ${
@@ -53,23 +40,23 @@ const ResultPage = ({ userInfo, userEmail, answers }) => {
             }`}
           >
             <h4 className="font-semibold text-gray-800 mb-2">
-              Q{item.q}. {item.question}
+              Q{item.q}. {questions[i].question}
             </h4>
-            {item.options.map((opt, index) => (
+            {questions[i].options.map((opt, index) => (
               <div key={index} className="ml-4 text-lg">
                 <span
                   className={`${
-                    item.correctAnswer === index
+                    item.correct === index
                       ? "font-bold text-green-700"
-                      : item.selectedAnswer === index
+                      : item.selected === index
                       ? "text-red-600"
                       : "text-gray-700"
                   }`}
                 >
                   {index + 1}. {opt}
-                  {item.correctAnswer === index && " ✅"}
-                  {item.selectedAnswer === index &&
-                    item.selectedAnswer !== item.correctAnswer &&
+                  {item.correct === index && " ✅"}
+                  {item.selected === index &&
+                    item.selected !== item.correct &&
                     " ❌"}
                 </span>
               </div>

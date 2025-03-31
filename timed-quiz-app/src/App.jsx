@@ -95,15 +95,28 @@ const App = () => {
   }
 
   const handleSubmit = async () => {
+    const finalAnswers = [...answers]
+  
+    // ✅ 1. Fetch correct answers securely from Firestore
+    const metadataRef = doc(db, "quiz_metadata", "default")
+    const metadataSnap = await getDoc(metadataRef)
+  
+    if (!metadataSnap.exists()) {
+      alert("Scoring data missing!")
+      return
+    }
+  
+    const correctAnswers = metadataSnap.data().correctAnswers
+  
+    // ✅ 2. Compare answers & build detailed results
     let correctCount = 0
     const detailedResults = []
   
-    questions.forEach((q, i) => {
-      const selected = answers[i]
-      const correct = q.answer
+    finalAnswers.forEach((selected, i) => {
+      const correct = correctAnswers[i]
       const isCorrect = selected === correct
   
-      if (selected !== null) {
+      if (selected !== null && typeof selected === "number") {
         detailedResults.push({
           q: i + 1, // start from 1
           selected,
@@ -116,9 +129,10 @@ const App = () => {
     })
   
     const wrongCount = questions.length - correctCount
-    const answeredCount = answers.filter((a) => typeof a === "number").length
+    const answeredCount = finalAnswers.filter((a) => typeof a === "number").length
     const unansweredCount = questions.length - answeredCount
   
+    // ✅ 3. Save to Firestore
     if (user) {
       const ref = doc(db, "quiz_responses", user.uid)
       await setDoc(
@@ -127,7 +141,7 @@ const App = () => {
           name: userInfo.name,
           email: user.email,
           mobile: userInfo.mobile,
-          answers,
+          answers: finalAnswers,
           answeredCount,
           unansweredCount,
           score: correctCount,
