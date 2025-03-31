@@ -57,6 +57,34 @@ const QuizPage = ({
         {questions.length}
       </div>
 
+      {/* Vertical floating timer - LEFT */}
+      <div className="fixed top-75 left-2 sm:top-1/4 sm:left-4 z-50 flex flex-col items-center gap-1 text-xs sm:text-sm">
+        <div className="bg-blue-200 text-blue-800 font-bold px-2 py-1 rounded-full shadow border border-blue-300">
+          ⏱
+        </div>
+        <div className="bg-white text-blue-700 font-semibold px-2 py-0.5 rounded">
+          {Math.floor(timeLeft / 60)}
+        </div>
+        <div className="text-blue-700 font-bold">:</div>
+        <div className="bg-white text-blue-700 font-semibold px-2 py-0.5 rounded">
+          {String(timeLeft % 60).padStart(2, "0")}
+        </div>
+      </div>
+
+      {/* Vertical floating answered - RIGHT */}
+      <div className="fixed top-75 right-2 sm:top-1/4 sm:right-4 z-50 flex flex-col items-center gap-1 text-xs sm:text-sm">
+        <div className="bg-green-200 text-green-800 font-bold px-2 py-1 rounded-full shadow border border-green-300">
+          ✅
+        </div>
+        <div className="bg-white text-green-700 font-semibold px-2 py-0.5 rounded">
+          {answers.filter((a) => typeof a === "number").length}
+        </div>
+        <div className="text-green-700 font-bold">/</div>
+        <div className="bg-white text-green-700 font-semibold px-2 py-0.5 rounded">
+          {questions.length}
+        </div>
+      </div>
+
       {/* Quiz Questions */}
       <div className="5">
         {questions.map((q, index) => (
