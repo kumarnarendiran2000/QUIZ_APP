@@ -21,8 +21,8 @@ const Login = ({ onLogin }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-md">
-        <h1 className="text-3xl font-bold text-center text-blue-700 mb-4">
-          🎓 Welcome to the GK Quiz!
+        <h1 className="text-4xl font-bold text-center text-blue-700 mb-4">
+          🎓 Welcome to the Pharmacovigilance Quiz!
         </h1>
         <p className="text-center text-gray-600 mb-6 text-lg">
           Please read the instructions carefully before starting.
@@ -39,8 +39,8 @@ const Login = ({ onLogin }) => {
           </li>
           <li>
             The quiz is <strong>time-based</strong> — you’ll have{" "}
-            <span className="text-blue-700 font-medium">7 minutes</span> to
-            answer <strong>6 questions</strong>.
+            <span className="text-blue-700 font-medium">15 minutes</span> to
+            answer <strong>15 questions</strong>.
           </li>
           <li>
             ❗ Once the quiz starts, <strong>do not switch tabs</strong> or
