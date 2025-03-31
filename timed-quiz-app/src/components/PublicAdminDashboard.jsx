@@ -1,32 +1,32 @@
-import React, { useEffect, useState } from "react"
-import { collection, onSnapshot } from "firebase/firestore"
-import { db } from "../utils/firebase"
-import { questions } from "../data/questions"
+import React, { useEffect, useState } from "react";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "../utils/firebase";
+import { questions } from "../data/questions";
 
 const AdminDashboard = () => {
-  const [submissions, setSubmissions] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [viewing, setViewing] = useState(null)
+  const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [viewing, setViewing] = useState(null);
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
       collection(db, "quiz_responses"),
       (snapshot) => {
-        const data = snapshot.docs.map(doc => ({
+        const data = snapshot.docs.map((doc) => ({
           id: doc.id,
-          ...doc.data()
-        }))
-        setSubmissions(data.filter(entry => entry.score !== undefined))
-        setLoading(false)
+          ...doc.data(),
+        }));
+        setSubmissions(data.filter((entry) => entry.score !== undefined));
+        setLoading(false);
       },
       (error) => {
-        console.error("Error fetching real-time data:", error)
-        setLoading(false)
+        console.error("Error fetching real-time data:", error);
+        setLoading(false);
       }
-    )
+    );
 
-    return () => unsubscribe()
-  }, [])
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className="max-w-8xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
@@ -35,9 +35,13 @@ const AdminDashboard = () => {
       </h2>
 
       {loading ? (
-        <p className="text-center text-gray-500 text-lg">Loading submissions...</p>
+        <p className="text-center text-gray-500 text-lg">
+          Loading submissions...
+        </p>
       ) : submissions.length === 0 ? (
-        <p className="text-center text-gray-500 text-lg">No submissions found yet.</p>
+        <p className="text-center text-gray-500 text-lg">
+          No submissions found yet.
+        </p>
       ) : (
         <div className="overflow-x-auto border rounded-md">
           <table className="min-w-full text-xl text-left">
@@ -57,7 +61,10 @@ const AdminDashboard = () => {
             </thead>
             <tbody>
               {submissions.map((s) => (
-                <tr key={s.id} className="border-t hover:bg-gray-50 text-gray-800">
+                <tr
+                  key={s.id}
+                  className="border-t hover:bg-gray-50 text-gray-800"
+                >
                   <td className="px-4 py-2">{s.name}</td>
                   <td className="px-4 py-2">{s.email}</td>
                   <td className="px-4 py-2">{s.mobile}</td>
@@ -66,7 +73,9 @@ const AdminDashboard = () => {
                   <td className="px-4 py-2 font-semibold">{s.score}</td>
                   <td className="px-4 py-2 text-green-600">{s.correctCount}</td>
                   <td className="px-4 py-2 text-red-600">{s.wrongCount}</td>
-                  <td className="px-4 py-2">{new Date(s.submittedAt).toLocaleString()}</td>
+                  <td className="px-4 py-2">
+                    {new Date(s.submittedAt).toLocaleString()}
+                  </td>
                   <td className="px-4 py-2">
                     <button
                       onClick={() => setViewing(s)}
@@ -85,7 +94,8 @@ const AdminDashboard = () => {
       {viewing && (
         <div className="mt-8 p-6 border border-gray-300 rounded-md bg-gray-50">
           <h3 className="text-xl font-bold mb-2 text-gray-800">
-            Result for: {viewing.name} ({viewing.email}) - Mobile: {viewing.mobile}
+            Result for: {viewing.name} ({viewing.email}) - Mobile:{" "}
+            {viewing.mobile}
           </h3>
           <p className="mb-4 text-gray-700">
             ✅ Correct: <strong>{viewing.correctCount}</strong> | ❌ Wrong:{" "}
@@ -95,15 +105,17 @@ const AdminDashboard = () => {
           <p className="text-gray-700 mb-2">
             🟦 Answered: <strong>{viewing.answeredCount}</strong> &nbsp;|&nbsp;
             ⬜ Unanswered: <strong>{viewing.unansweredCount}</strong>
-        </p>
+          </p>
 
           {viewing.detailedResults?.map((r, index) => {
-            const q = questions[r.q - 1]
+            const q = questions[r.q - 1];
             return (
               <div
                 key={index}
                 className={`mb-4 p-4 rounded-md border ${
-                  r.isCorrect ? "border-green-300 bg-green-50" : "border-red-300 bg-red-50"
+                  r.isCorrect
+                    ? "border-green-300 bg-green-50"
+                    : "border-red-300 bg-red-50"
                 }`}
               >
                 <h4 className="font-semibold mb-2 text-gray-800">
@@ -127,7 +139,7 @@ const AdminDashboard = () => {
                   </div>
                 ))}
               </div>
-            )
+            );
           })}
 
           <button
@@ -139,7 +151,7 @@ const AdminDashboard = () => {
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
-export default AdminDashboard
+export default AdminDashboard;
