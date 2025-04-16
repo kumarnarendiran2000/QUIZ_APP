@@ -10,7 +10,7 @@ import { db } from "./utils/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { questions } from "./data/questions";
 
-const QUIZ_DURATION = 900; // 15 minutes in seconds
+const QUIZ_DURATION = 420; // 07 minutes in seconds
 
 const App = () => {
   const [step, setStep] = useState("login");
