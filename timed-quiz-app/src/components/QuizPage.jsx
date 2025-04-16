@@ -1,5 +1,5 @@
 // src/components/QuizPage.jsx
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { questions } from "../data/questions";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../utils/firebase";
@@ -14,13 +14,18 @@ const QuizPage = ({
 }) => {
   const [submitting, setSubmitting] = useState(false);
 
+  const timerRef = useRef(null);
+
   useEffect(() => {
     if (timeLeft > 0) {
-      const timer = setInterval(() => setTimeLeft((t) => t - 1), 1000);
-      return () => clearInterval(timer);
+      timerRef.current = setInterval(() => {
+        setTimeLeft((t) => t - 1);
+      }, 1000);
     } else {
       onSubmit();
     }
+
+    return () => clearInterval(timerRef.current);
   }, [timeLeft, setTimeLeft, onSubmit]);
 
   const handleAnswer = async (index, answer) => {
@@ -38,8 +43,9 @@ const QuizPage = ({
   };
 
   const handleSubmit = () => {
+    clearInterval(timerRef.current); // ⛔ stop timer immediately
     setSubmitting(true);
-    onSubmit();
+    onSubmit(); // this still reads timeLeft at this moment
   };
 
   return (

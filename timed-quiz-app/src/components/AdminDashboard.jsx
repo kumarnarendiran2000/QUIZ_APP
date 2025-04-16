@@ -55,7 +55,8 @@ const AdminDashboard = () => {
                 <th className="px-4 py-3">Score</th>
                 <th className="px-4 py-3 text-green-700">Correct</th>
                 <th className="px-4 py-3 text-red-700">Wrong</th>
-                <th className="px-4 py-3">Submitted At</th>
+                <th className="px-4 py-3">Time Taken</th>
+                <th className="px-4 py-3">Completed At</th>
                 <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
@@ -73,8 +74,11 @@ const AdminDashboard = () => {
                   <td className="px-4 py-2 font-semibold">{s.score}</td>
                   <td className="px-4 py-2 text-green-600">{s.correctCount}</td>
                   <td className="px-4 py-2 text-red-600">{s.wrongCount}</td>
+                  <td className="px-4 py-2">{s.quizDuration || "N/A"}</td>
                   <td className="px-4 py-2">
-                    {new Date(s.submittedAt).toLocaleString()}
+                    {s.completedAt
+                      ? new Date(s.completedAt).toLocaleString()
+                      : "N/A"}
                   </td>
                   <td className="px-4 py-2">
                     <button
