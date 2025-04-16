@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { questions } from "../data/questions";
@@ -7,6 +7,7 @@ const AdminDashboard = () => {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState(null);
+  const tableRef = useRef();
 
   useEffect(() => {
     const unsubscribe = onSnapshot(
@@ -28,11 +29,23 @@ const AdminDashboard = () => {
     return () => unsubscribe();
   }, []);
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="max-w-8xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
-      <h2 className="text-4xl font-bold mb-6 border-b pb-2 text-gray-800">
-        🧾 Admin Dashboard
-      </h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-4xl font-bold border-b pb-2 text-gray-800">
+          🧾 Admin Dashboard
+        </h2>
+        <button
+          onClick={handlePrint}
+          className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 print:hidden"
+        >
+          Download Results as PDF
+        </button>
+      </div>
 
       {loading ? (
         <p className="text-center text-gray-500 text-lg">
@@ -43,9 +56,9 @@ const AdminDashboard = () => {
           No submissions found yet.
         </p>
       ) : (
-        <div className="overflow-x-auto border rounded-md">
-          <table className="min-w-full text-xl text-left">
-            <thead className="bg-gray-100 text-gray-700 uppercase text-xs font-semibold">
+        <div ref={tableRef} className="overflow-x-auto border rounded-md">
+          <table className="min-w-full text-sm sm:text-base text-left print:text-xs">
+            <thead className="bg-gray-100 text-gray-700 uppercase font-semibold">
               <tr>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Email</th>
@@ -57,7 +70,7 @@ const AdminDashboard = () => {
                 <th className="px-4 py-3 text-red-700">Wrong</th>
                 <th className="px-4 py-3">Time Taken</th>
                 <th className="px-4 py-3">Completed At</th>
-                <th className="px-4 py-3">Action</th>
+                <th className="px-4 py-3 print:hidden">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -80,7 +93,7 @@ const AdminDashboard = () => {
                       ? new Date(s.completedAt).toLocaleString()
                       : "N/A"}
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2 print:hidden">
                     <button
                       onClick={() => setViewing(s)}
                       className="text-blue-600 underline hover:text-blue-800 text-sm"
