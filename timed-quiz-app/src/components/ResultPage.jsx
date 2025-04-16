@@ -4,7 +4,13 @@ import { questions } from "../data/questions";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../utils/firebase";
 
-const ResultPage = ({ userInfo, userEmail, answers, detailedResults }) => {
+const ResultPage = ({
+  userInfo,
+  userEmail,
+  answers,
+  detailedResults,
+  quizDuration,
+}) => {
   const correct = detailedResults.filter((r) => r.isCorrect).length;
   const wrong = detailedResults.length - correct;
   const answeredCount = answers.filter((a) => typeof a === "number").length;
@@ -66,6 +72,9 @@ const ResultPage = ({ userInfo, userEmail, answers, detailedResults }) => {
         <p>
           🟦 Answered: <strong>{answeredCount}</strong> &nbsp;|&nbsp; ⬜
           Unanswered: <strong>{unansweredCount}</strong>
+        </p>
+        <p>
+          ⏱️ <strong>Time Taken:</strong> {quizDuration}
         </p>
       </div>
 

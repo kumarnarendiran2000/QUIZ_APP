@@ -87,6 +87,12 @@ const UserForm = ({ userInfo, setUserInfo, onStartQuiz }) => {
           )}
         </div>
 
+        <p className="text-sm text-left mt-4 mb-6 text-gray-600 italic border-l-4 border-blue-400 pl-4 bg-blue-50 rounded-md py-3">
+          By continuing, you agree to the collection of your name, email, and
+          mobile number for quiz participation. This data is stored securely and
+          not shared.
+        </p>
+
         <button
           type="submit"
           disabled={submitting}

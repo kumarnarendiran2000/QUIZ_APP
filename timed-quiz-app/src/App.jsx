@@ -10,7 +10,7 @@ import { db } from "./utils/firebase";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { questions } from "./data/questions";
 
-const QUIZ_DURATION = 900; // in seconds (15 minutes)
+const QUIZ_DURATION = 900; // 15 minutes in seconds
 
 const App = () => {
   const [step, setStep] = useState("login");
@@ -18,16 +18,19 @@ const App = () => {
   const [userInfo, setUserInfo] = useState({ name: "", mobile: "" });
   const [answers, setAnswers] = useState([]);
   const [timeLeft, setTimeLeft] = useState(QUIZ_DURATION);
+  const [detailedResults, setDetailedResults] = useState([]);
+  const [quizDuration, setQuizDuration] = useState("N/A");
+
   const ADMIN_EMAILS = [
     "kumarnarendiran2211@gmail.com",
     "kumargowtham1994@gmail.com",
   ];
-  const [detailedResults, setDetailedResults] = useState([]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
+  // ✅ Step 1: Handle Login
   const handleLogin = async (loggedInUser) => {
     if (ADMIN_EMAILS.includes(loggedInUser.email)) {
       setUser(loggedInUser);
@@ -47,6 +50,7 @@ const App = () => {
         setUserInfo({ name: data.name, mobile: data.mobile });
         setAnswers(data.answers || []);
         setDetailedResults(data.detailedResults || []);
+        setQuizDuration(data.quizDuration || "N/A");
         setStep("result");
         return;
       }
@@ -80,6 +84,7 @@ const App = () => {
     setStep("form");
   };
 
+  // ✅ Step 2: Start Quiz
   const startQuiz = async () => {
     const initialAnswers = Array(questions.length).fill(null);
 
@@ -103,6 +108,7 @@ const App = () => {
     setStep("quiz");
   };
 
+  // ✅ Step 3: Submit Quiz
   const handleSubmit = async () => {
     const finalAnswers = [...answers];
 
@@ -137,13 +143,17 @@ const App = () => {
       }
     });
 
-    const wrongCount = questions.length - correctCount;
     const answeredCount = finalAnswers.filter(
       (a) => typeof a === "number"
     ).length;
     const unansweredCount = questions.length - answeredCount;
 
-    // ✅ 3. Save to Firestore
+    // ⏱️ Calculate quiz duration using UI timer
+    const timeTakenSec = QUIZ_DURATION - timeLeft;
+    const mins = Math.floor(timeTakenSec / 60);
+    const secs = timeTakenSec % 60;
+    const quizDuration = `${mins}m ${secs}s`;
+
     if (user) {
       const ref = doc(db, "quiz_responses", user.uid);
       await setDoc(
@@ -157,14 +167,16 @@ const App = () => {
           unansweredCount,
           score: correctCount,
           correctCount,
-          wrongCount,
+          wrongCount: questions.length - correctCount,
           detailedResults,
-          submittedAt: new Date().toISOString(),
+          quizDuration,
+          completedAt: Date.now(), // Optional: tie-breaker
         },
         { merge: true }
       );
 
       setDetailedResults(detailedResults);
+      setQuizDuration(quizDuration);
     }
 
     setStep("result");
@@ -196,6 +208,7 @@ const App = () => {
           userEmail={user?.email}
           answers={answers}
           detailedResults={detailedResults}
+          quizDuration={quizDuration}
         />
       )}
       {step === "admin" && <AdminDashboard />}
