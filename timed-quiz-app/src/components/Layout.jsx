@@ -8,11 +8,11 @@ const Layout = ({ children }) => {
       <header className="bg-blue-200 shadow-md py-4 px-6">
         <div className="flex items-center justify-center space-x-4 sm:space-x-8">
           {/* Left Logo */}
-          <div className="h-20 w-20 flex items-center justify-center">
+          <div className="w-24 h-24 flex items-center justify-center">
             <img
               src="/ISA_Raichur_logo_final.png"
               alt="ISA Raichur Logo"
-              className="h-full w-full object-contain"
+              className="w-full h-full object-contain"
             />
           </div>
 
@@ -30,11 +30,11 @@ const Layout = ({ children }) => {
           </div>
 
           {/* Right Logo */}
-          <div className="h-18 w-22 flex items-center justify-center">
+          <div className="w-20 h-20 flex items-center justify-center">
             <img
               src="/ISA_Karnataka_logo_final.png"
               alt="ISA Karnataka Logo"
-              className="h-full w-full object-contain"
+              className="w-full h-full object-contain"
             />
           </div>
         </div>
