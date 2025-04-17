@@ -6,14 +6,19 @@ const Layout = ({ children }) => {
     <div className="flex flex-col min-h-screen">
       {/* Header */}
       <header className="bg-blue-200 shadow-md py-4 px-6">
-        <div className="flex items-center justify-center space-x-4">
-          <img
-            src="/ISA_Raichur_logo_enhanced.png" // You must place this in your `public/` folder
-            alt="ISA Raichur Logo"
-            className="h-20 w-20 object-contain"
-          />
+        <div className="flex items-center justify-center space-x-4 sm:space-x-8">
+          {/* Left Logo */}
+          <div className="h-20 w-20 flex items-center justify-center">
+            <img
+              src="/ISA_Raichur_logo_final.png"
+              alt="ISA Raichur Logo"
+              className="h-full w-full object-contain"
+            />
+          </div>
+
+          {/* Title */}
           <div className="text-center">
-            <h1 className="text-xl sm:text-2xl font-bold text-blue-900">
+            <h1 className="text-lg sm:text-2xl font-bold text-blue-900 leading-tight">
               Indian Society of Anaesthesiologists
             </h1>
             <p className="text-sm sm:text-base text-gray-700 -mt-1">
@@ -22,6 +27,15 @@ const Layout = ({ children }) => {
             <p className="text-xs sm:text-sm text-gray-600">
               www.isakarnataka.org
             </p>
+          </div>
+
+          {/* Right Logo */}
+          <div className="h-18 w-22 flex items-center justify-center">
+            <img
+              src="/ISA_Karnataka_logo_final.png"
+              alt="ISA Karnataka Logo"
+              className="h-full w-full object-contain"
+            />
           </div>
         </div>
       </header>

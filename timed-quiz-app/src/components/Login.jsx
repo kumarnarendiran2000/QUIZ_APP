@@ -39,8 +39,8 @@ const Login = ({ onLogin }) => {
           </li>
           <li>
             The quiz is <strong>time-based</strong> — you’ll have{" "}
-            <span className="text-blue-700 font-medium">15 minutes</span> to
-            answer <strong>15 questions</strong>.
+            <span className="text-blue-700 font-medium">10 minutes</span> to
+            answer <strong>10 questions</strong>.
           </li>
           <li>
             ❗ Once the quiz starts, <strong>do not switch tabs</strong> or
@@ -56,8 +56,9 @@ const Login = ({ onLogin }) => {
             <strong>automatically submitted</strong>, even if unanswered.
           </li>
           <li>
-            At the end, your <strong>score and the correct answers</strong> will
-            be shown.
+            At the end, your{" "}
+            <strong>score, time taken and the correct answers</strong> will be
+            shown.
           </li>
           <li>
             ✅ Once you're ready, click the button below to log in and begin!
