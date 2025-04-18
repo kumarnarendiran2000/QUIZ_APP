@@ -1,3 +1,4 @@
+// src/components/AdminDashboard.jsx
 import React, { useEffect, useRef, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../utils/firebase";
@@ -5,8 +6,10 @@ import { questions } from "../data/questions";
 
 const AdminDashboard = () => {
   const [submissions, setSubmissions] = useState([]);
+  const [originalOrder, setOriginalOrder] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState(null);
+  const [isSorted, setIsSorted] = useState(false);
   const tableRef = useRef();
 
   useEffect(() => {
@@ -17,7 +20,9 @@ const AdminDashboard = () => {
           id: doc.id,
           ...doc.data(),
         }));
-        setSubmissions(data.filter((entry) => entry.score !== undefined));
+        const filtered = data.filter((entry) => entry.score !== undefined);
+        setSubmissions(filtered);
+        setOriginalOrder(filtered);
         setLoading(false);
       },
       (error) => {
@@ -33,18 +38,48 @@ const AdminDashboard = () => {
     window.print();
   };
 
+  const toggleSort = () => {
+    if (!isSorted) {
+      const sorted = [...submissions].sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+
+        const parseTime = (dur) => {
+          const [min = "0m", sec = "0s"] = dur.split(" ");
+          return parseInt(min) * 60 + parseInt(sec);
+        };
+
+        return (
+          parseTime(a.quizDuration || "0m 0s") -
+          parseTime(b.quizDuration || "0m 0s")
+        );
+      });
+      setSubmissions(sorted);
+    } else {
+      setSubmissions(originalOrder);
+    }
+    setIsSorted(!isSorted);
+  };
+
   return (
     <div className="max-w-8xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-4xl font-bold border-b pb-2 text-gray-800">
+        <h2 className="text-4xl font-bold border-b pb-2 text-gray-800 print:hidden">
           🧾 Admin Dashboard
         </h2>
-        <button
-          onClick={handlePrint}
-          className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 print:hidden"
-        >
-          Download Results as PDF
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={toggleSort}
+            className="bg-yellow-500 text-white px-4 py-2 rounded shadow hover:bg-yellow-600 print:hidden"
+          >
+            {isSorted ? "Reset Order" : "Sort by Score & Time"}
+          </button>
+          <button
+            onClick={handlePrint}
+            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 print:hidden"
+          >
+            Download Results as PDF
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -60,6 +95,7 @@ const AdminDashboard = () => {
           <table className="min-w-full text-sm sm:text-base text-left print:text-xs">
             <thead className="bg-gray-100 text-gray-700 uppercase font-semibold">
               <tr>
+                <th className="px-4 py-3">S. No</th>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Mobile</th>
@@ -74,11 +110,12 @@ const AdminDashboard = () => {
               </tr>
             </thead>
             <tbody>
-              {submissions.map((s) => (
+              {submissions.map((s, idx) => (
                 <tr
                   key={s.id}
                   className="border-t hover:bg-gray-50 text-gray-800"
                 >
+                  <td className="px-4 py-2">{idx + 1}</td>
                   <td className="px-4 py-2">{s.name}</td>
                   <td className="px-4 py-2">{s.email}</td>
                   <td className="px-4 py-2">{s.mobile}</td>
@@ -118,7 +155,6 @@ const AdminDashboard = () => {
             ✅ Correct: <strong>{viewing.correctCount}</strong> | ❌ Wrong:{" "}
             <strong>{viewing.wrongCount}</strong>
           </p>
-
           <p className="text-gray-700 mb-2">
             🟦 Answered: <strong>{viewing.answeredCount}</strong> &nbsp;|&nbsp;
             ⬜ Unanswered: <strong>{viewing.unansweredCount}</strong>
