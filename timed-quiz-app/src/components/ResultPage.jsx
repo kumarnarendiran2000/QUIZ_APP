@@ -17,6 +17,7 @@ const ResultPage = ({
   const unansweredCount = questions.length - answeredCount;
 
   const [correctAnswers, setCorrectAnswers] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchCorrectAnswers = async () => {
@@ -25,10 +26,19 @@ const ResultPage = ({
       if (snap.exists()) {
         setCorrectAnswers(snap.data().correctAnswers);
       }
+      setLoading(false); // Done loading
     };
 
     fetchCorrectAnswers();
   }, []);
+
+  if (loading) {
+    return (
+      <div className="text-center mt-10 text-lg text-gray-600">
+        Preparing your results...
+      </div>
+    );
+  }
 
   const resultView = questions.map((q, i) => {
     const selected = answers[i];
