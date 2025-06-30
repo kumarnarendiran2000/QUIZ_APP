@@ -22,7 +22,7 @@ const Login = ({ onLogin }) => {
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-md">
         <h1 className="text-4xl font-bold text-center text-blue-700 mb-4">
-          🎓 Welcome to the Pharmacovigilance Quiz!
+          🎓 Welcome to the Quiz!
         </h1>
         <p className="text-center text-gray-600 mb-6 text-lg">
           Please read the instructions carefully before starting.

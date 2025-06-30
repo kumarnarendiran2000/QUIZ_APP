@@ -206,6 +206,18 @@ const QuizPage = ({
     // eslint-disable-next-line
   }, []);
 
+  // Group questions by topic
+  const topics = [
+    "AIRWAY MANAGEMENT",
+    "TRAUMA MANAGEMENT",
+    "CARDIOPULMONARY RESUSCITATION (CPR)",
+    "BASIC PROCEDURES",
+  ];
+  const questionsByTopic = topics.map((topic) => ({
+    topic,
+    questions: questions.filter((q) => q.topic === topic),
+  }));
+
   return (
     <div className="max-w-5xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
       {/* Timer Block */}
@@ -249,38 +261,54 @@ const QuizPage = ({
         </div>
       </div>
 
-      {/* Quiz Questions */}
+      {/* Quiz Questions - Grouped by Topic */}
       <div className="5">
-        {questions.map((q, index) => (
-          <div
-            key={index}
-            className="p-6 border border-gray-300 rounded-md shadow-md bg-white hover:shadow-lg transition mb-6"
-          >
-            <h4 className="text-xl font-bold mb-4 text-gray-800 leading-snug tracking-wide">
-              {index + 1}. {q.question}
-            </h4>
-
-            <div className="space-y-5">
-              {q.options.map((opt, i) => (
-                <label
-                  key={i}
-                  className={`block p-2 pl-4 rounded-md transition cursor-pointer border ${
-                    answers[index] === i
-                      ? "bg-blue-100 border-blue-500 text-blue-900 font-semibold"
-                      : "bg-gray-100 border-transparent hover:bg-gray-200 text-gray-800"
-                  }`}
+        {questionsByTopic.map(({ topic, questions: topicQuestions }) => (
+          <div key={topic} className="mb-10">
+            <h3 className="text-2xl font-bold text-blue-700 mb-6 border-b-2 border-blue-200 pb-2 uppercase tracking-wide">
+              {topic}
+            </h3>
+            {topicQuestions.map((q) => {
+              // Find the global index of this question in the full questions array
+              const globalIndex = questions.findIndex(
+                (qq) => qq.question === q.question && qq.topic === q.topic
+              );
+              return (
+                <div
+                  key={globalIndex}
+                  className="p-6 border border-gray-300 rounded-md shadow-md bg-white hover:shadow-lg transition mb-6"
                 >
-                  <input
-                    type="radio"
-                    name={`q${index}`}
-                    checked={answers[index] !== null && answers[index] === i}
-                    onChange={() => handleAnswer(index, i)}
-                    className="mr-2"
-                  />
-                  <span className="text-gray-800 text-lg">{opt}</span>
-                </label>
-              ))}
-            </div>
+                  <h4 className="text-xl font-bold mb-4 text-gray-800 leading-snug tracking-wide">
+                    {globalIndex + 1}. {q.question}
+                  </h4>
+
+                  <div className="space-y-5">
+                    {q.options.map((opt, i) => (
+                      <label
+                        key={i}
+                        className={`block p-2 pl-4 rounded-md transition cursor-pointer border ${
+                          answers[globalIndex] === i
+                            ? "bg-blue-100 border-blue-500 text-blue-900 font-semibold"
+                            : "bg-gray-100 border-transparent hover:bg-gray-200 text-gray-800"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={`q${globalIndex}`}
+                          checked={
+                            answers[globalIndex] !== null &&
+                            answers[globalIndex] === i
+                          }
+                          onChange={() => handleAnswer(globalIndex, i)}
+                          className="mr-2"
+                        />
+                        <span className="text-gray-800 text-lg">{opt}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ))}
       </div>
