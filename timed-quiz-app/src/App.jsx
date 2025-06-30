@@ -15,7 +15,7 @@ const QUIZ_DURATION = 1200; // 20 minutes in seconds
 const App = () => {
   const [step, setStep] = useState("login");
   const [user, setUser] = useState(null);
-  const [userInfo, setUserInfo] = useState({ name: "", mobile: "" });
+  const [userInfo, setUserInfo] = useState({ name: "", mobile: "", regno: "" });
   const [answers, setAnswers] = useState([]);
   const [timeLeft, setTimeLeft] = useState(QUIZ_DURATION);
   const [detailedResults, setDetailedResults] = useState([]);
@@ -49,7 +49,11 @@ const App = () => {
       // If quiz was submitted
       if (data.score !== undefined) {
         setUser(loggedInUser);
-        setUserInfo({ name: data.name, mobile: data.mobile });
+        setUserInfo({
+          name: data.name,
+          mobile: data.mobile,
+          regno: data.regno || "",
+        });
         setAnswers(data.answers || []);
         setDetailedResults(data.detailedResults || []);
         setQuizDuration(data.quizDuration || "N/A");
@@ -64,7 +68,11 @@ const App = () => {
 
         if (remaining > 0) {
           setUser(loggedInUser);
-          setUserInfo({ name: data.name || "", mobile: data.mobile || "" });
+          setUserInfo({
+            name: data.name || "",
+            mobile: data.mobile || "",
+            regno: data.regno || "",
+          });
 
           // Normalize answers with nulls
           const normalized = Array(questions.length).fill(null);
@@ -107,6 +115,7 @@ const App = () => {
           name: userInfo.name,
           email: user.email,
           mobile: userInfo.mobile,
+          regno: userInfo.regno,
           startedAt: Date.now(),
           answers: initialAnswers,
         },
@@ -173,6 +182,7 @@ const App = () => {
           name: userInfo.name,
           email: user.email,
           mobile: userInfo.mobile,
+          regno: userInfo.regno,
           answers: finalAnswers,
           answeredCount,
           unansweredCount,

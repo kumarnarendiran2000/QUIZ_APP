@@ -2,13 +2,14 @@
 import React, { useState } from "react";
 
 const UserForm = ({ userInfo, setUserInfo, onStartQuiz }) => {
-  const [errors, setErrors] = useState({ name: "", mobile: "" });
+  const [errors, setErrors] = useState({ name: "", mobile: "", regno: "" });
   const [submitting, setSubmitting] = useState(false);
 
   const validate = () => {
-    const newErrors = { name: "", mobile: "" };
+    const newErrors = { name: "", mobile: "", regno: "" };
     const nameRegex = /^[a-zA-Z\s]+$/;
     const mobileRegex = /^[0-9]{10}$/;
+    const regnoRegex = /^[A-Za-z0-9-/]+$/; // Accepts alphanumeric, dash, slash
 
     if (!userInfo.name.trim()) {
       newErrors.name = "Name is required";
@@ -22,8 +23,14 @@ const UserForm = ({ userInfo, setUserInfo, onStartQuiz }) => {
       newErrors.mobile = "Mobile must be 10 digits";
     }
 
+    if (!userInfo.regno || !userInfo.regno.trim()) {
+      newErrors.regno = "Registration Number is required";
+    } else if (!regnoRegex.test(userInfo.regno)) {
+      newErrors.regno = "Invalid Registration Number format";
+    }
+
     setErrors(newErrors);
-    return !newErrors.name && !newErrors.mobile;
+    return !newErrors.name && !newErrors.mobile && !newErrors.regno;
   };
 
   const handleSubmit = (e) => {
@@ -43,6 +50,29 @@ const UserForm = ({ userInfo, setUserInfo, onStartQuiz }) => {
         <h2 className="text-2xl font-bold mb-6 text-center text-blue-700">
           💼 Enter Your Details
         </h2>
+
+        {/* Registration Number Field */}
+        <div className="mb-4">
+          <label className="block text-gray-700 text-lg mb-2" htmlFor="regno">
+            Registration Number <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="regno"
+            value={userInfo.regno || ""}
+            onChange={(e) =>
+              setUserInfo({ ...userInfo, regno: e.target.value })
+            }
+            className={`w-full px-4 py-2 rounded border text-lg focus:outline-none ${
+              errors.regno
+                ? "border-red-500 bg-red-50"
+                : "border-gray-300 focus:border-blue-500"
+            }`}
+          />
+          {errors.regno && (
+            <p className="text-red-600 text-sm mt-1">{errors.regno}</p>
+          )}
+        </div>
 
         <div className="mb-4">
           <label className="block text-gray-700 text-lg mb-2" htmlFor="name">

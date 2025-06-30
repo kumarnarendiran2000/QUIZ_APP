@@ -97,6 +97,7 @@ const AdminDashboard = () => {
               <tr>
                 <th className="px-4 py-3">S. No</th>
                 <th className="px-4 py-3">Name</th>
+                <th className="px-4 py-3">Registration Number</th>
                 <th className="px-4 py-3">Email</th>
                 <th className="px-4 py-3">Mobile</th>
                 <th className="px-4 py-3">Answered</th>
@@ -119,6 +120,7 @@ const AdminDashboard = () => {
                 >
                   <td className="px-4 py-2">{idx + 1}</td>
                   <td className="px-4 py-2">{s.name}</td>
+                  <td className="px-4 py-2">{s.regno || "-"}</td>
                   <td className="px-4 py-2">{s.email}</td>
                   <td className="px-4 py-2">{s.mobile}</td>
                   <td className="px-4 py-2">{s.answeredCount}</td>
@@ -159,10 +161,13 @@ const AdminDashboard = () => {
 
       {viewing && (
         <div className="mt-8 p-6 border border-gray-300 rounded-md bg-gray-50">
-          <h3 className="text-xl font-bold mb-2 text-gray-800">
-            Result for: {viewing.name} ({viewing.email}) - Mobile:{" "}
-            {viewing.mobile}
-          </h3>
+          <div className="mb-4">
+            <span className="font-bold">Name:</span> {viewing.name} <br />
+            <span className="font-bold">Registration Number:</span>{" "}
+            {viewing.regno || "-"} <br />
+            <span className="font-bold">Email:</span> {viewing.email} <br />
+            <span className="font-bold">Mobile:</span> {viewing.mobile}
+          </div>
           <p className="mb-4 text-gray-700">
             ✅ Correct: <strong>{viewing.correctCount}</strong> | ❌ Wrong:{" "}
             <strong>{viewing.wrongCount}</strong>
