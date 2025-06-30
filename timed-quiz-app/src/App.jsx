@@ -20,6 +20,7 @@ const App = () => {
   const [timeLeft, setTimeLeft] = useState(QUIZ_DURATION);
   const [detailedResults, setDetailedResults] = useState([]);
   const [quizDuration, setQuizDuration] = useState("N/A");
+  const [tabSwitchCount, setTabSwitchCount] = useState(0);
 
   const ADMIN_EMAILS = [
     "kumarnarendiran2211@gmail.com",
@@ -73,6 +74,13 @@ const App = () => {
           setAnswers(normalized);
 
           setTimeLeft(remaining);
+          // On reload/relogin, restore the value from Firestore as-is (do not increment)
+          const restoredTabSwitchCount = data.tabSwitchCount || 0;
+          setTabSwitchCount(restoredTabSwitchCount);
+          if (restoredTabSwitchCount > 5) {
+            await handleSubmit();
+            return;
+          }
           setStep("quiz");
           return;
         }
@@ -200,6 +208,7 @@ const App = () => {
           setTimeLeft={setTimeLeft}
           onSubmit={handleSubmit}
           user={user}
+          initialTabSwitchCount={tabSwitchCount} // <-- pass as prop
         />
       )}
       {step === "result" && (
