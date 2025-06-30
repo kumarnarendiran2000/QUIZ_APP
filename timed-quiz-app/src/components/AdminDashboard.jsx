@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { questions } from "../data/questions";
+import { doc, deleteDoc } from "firebase/firestore";
 
 const AdminDashboard = () => {
   const [submissions, setSubmissions] = useState([]);
@@ -10,6 +11,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState(null);
   const [isSorted, setIsSorted] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null); // {id, name} or null
   const tableRef = useRef();
 
   useEffect(() => {
@@ -58,6 +60,16 @@ const AdminDashboard = () => {
       setSubmissions(originalOrder);
     }
     setIsSorted(!isSorted);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteDoc(doc(db, "quiz_responses", deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      alert("Failed to delete record: " + err.message);
+    }
   };
 
   return (
@@ -110,6 +122,7 @@ const AdminDashboard = () => {
                 <th className="px-4 py-3">Tab Switches</th>
                 <th className="px-4 py-3">Copy Attempts</th>
                 <th className="px-4 py-3 print:hidden">Action</th>
+                <th className="px-4 py-3 print:hidden">Delete</th>
               </tr>
             </thead>
             <tbody>
@@ -150,6 +163,16 @@ const AdminDashboard = () => {
                       className="text-blue-600 underline hover:text-blue-800 text-sm"
                     >
                       View Result
+                    </button>
+                  </td>
+                  <td className="px-4 py-2 print:hidden">
+                    <button
+                      onClick={() =>
+                        setDeleteTarget({ id: s.id, name: s.name })
+                      }
+                      className="text-red-600 underline hover:text-red-800 text-sm"
+                    >
+                      Delete
                     </button>
                   </td>
                 </tr>
@@ -218,6 +241,41 @@ const AdminDashboard = () => {
           >
             ← Close Result View
           </button>
+        </div>
+      )}
+
+      {/* Custom Delete Confirmation Modal */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-xs sm:max-w-sm w-[90vw] text-center flex flex-col items-center animate-fade-in border-2 border-red-200">
+            <h2 className="text-xl sm:text-2xl font-bold text-red-700 mb-3">
+              Confirm Deletion
+            </h2>
+            <p className="text-gray-700 mb-4 text-base sm:text-lg">
+              Are you sure you want to delete the record for
+              <span className="font-semibold text-red-700">
+                {" "}
+                {deleteTarget.name}{" "}
+              </span>
+              ?
+              <br />
+              This cannot be undone.
+            </p>
+            <div className="flex gap-4 w-full justify-center mt-2">
+              <button
+                onClick={handleDelete}
+                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg shadow transition w-1/2"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-lg shadow transition w-1/2"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
