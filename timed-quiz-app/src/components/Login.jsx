@@ -43,13 +43,28 @@ const Login = ({ onLogin }) => {
             answer <strong>10 questions</strong>.
           </li>
           <li>
-            ❗ Once the quiz starts, <strong>do not switch tabs</strong> or
-            reload the page.
+            <span className="text-red-700 font-bold">
+              Switching tabs or minimizing the window is strictly prohibited.
+            </span>{" "}
+            If you do, a warning popup will appear with a{" "}
+            <strong>20-second countdown</strong>. You have{" "}
+            <strong>10 tab switch attempts</strong> in total. If you reach 0
+            attempts, your quiz will be{" "}
+            <span className="font-bold">auto-submitted</span>.
           </li>
           <li>
-            If you close the tab or reload by accident, you will{" "}
-            <strong>resume where you left off</strong> — but the timer continues
-            in the background.
+            <span className="text-red-700 font-bold">
+              Copying any quiz content is also strictly prohibited.
+            </span>{" "}
+            Each copy attempt triggers a warning popup. You have{" "}
+            <strong>10 copy attempts</strong> in total. On the 10th attempt,
+            your quiz will be <span className="font-bold">auto-submitted</span>.
+          </li>
+          <li>
+            During a warning popup, you must click the respective <strong>action button</strong> to resume the test within <strong>20 seconds</strong>. Failing to do so will also auto-submit your quiz.
+          </li>
+          <li>
+            If you close the tab, reload, or relogin by accident, you will <strong>resume where you left off</strong> — but the timer continues in the background, including while any proctoring warning popup is on screen, and your proctoring attempt counts are restored. <strong>Reloading or relogging in is also counted as one tab switch and deducted from your tab switch attempts.</strong>
           </li>
           <li>
             ⏳ <strong>If the timer runs out</strong>, your quiz will be{" "}
@@ -57,7 +72,7 @@ const Login = ({ onLogin }) => {
           </li>
           <li>
             At the end, your{" "}
-            <strong>score, time taken and the correct answers</strong> will be
+            <strong>score, time taken, and the correct answers</strong> will be
             shown.
           </li>
           <li>
