@@ -61,10 +61,20 @@ const Login = ({ onLogin }) => {
             your quiz will be <span className="font-bold">auto-submitted</span>.
           </li>
           <li>
-            During a warning popup, you must click the respective <strong>action button</strong> to resume the test within <strong>20 seconds</strong>. Failing to do so will also auto-submit your quiz.
+            During a warning popup, you must click the respective{" "}
+            <strong>action button</strong> to resume the test within{" "}
+            <strong>20 seconds</strong>. Failing to do so will also auto-submit
+            your quiz.
           </li>
           <li>
-            If you close the tab, reload, or relogin by accident, you will <strong>resume where you left off</strong> — but the timer continues in the background, including while any proctoring warning popup is on screen, and your proctoring attempt counts are restored. <strong>Reloading or relogging in is also counted as one tab switch and deducted from your tab switch attempts.</strong>
+            If you close the tab, reload, or relogin by accident, you will{" "}
+            <strong>resume where you left off</strong> — but the timer continues
+            in the background, including while any proctoring warning popup is
+            on screen, and your proctoring attempt counts are restored.{" "}
+            <strong>
+              Reloading or relogging in is also counted as one tab switch and
+              deducted from your tab switch attempts.
+            </strong>
           </li>
           <li>
             ⏳ <strong>If the timer runs out</strong>, your quiz will be{" "}
