@@ -12,12 +12,16 @@ const QuizPage = ({
   onSubmit,
   user,
   initialTabSwitchCount = 0,
+  initialCopyAttemptCount = 0,
 }) => {
   const [tabSwitchCount, setTabSwitchCount] = useState(initialTabSwitchCount);
   const [showProctorWarning, setShowProctorWarning] = useState(false);
   const [proctorAutoSubmit, setProctorAutoSubmit] = useState(false);
   const [proctorCountdown, setProctorCountdown] = useState(0);
+  const [showCopyWarning, setShowCopyWarning] = useState(false);
+  const [copyAttemptCount, setCopyAttemptCount] = useState(0);
   const MAX_TAB_SWITCHES = 5;
+  const MAX_COPY_ATTEMPTS = 2;
   const [submitting, setSubmitting] = useState(false);
 
   const timerRef = useRef(null);
@@ -79,6 +83,10 @@ const QuizPage = ({
               autoSubmittedRef.current = true;
               setShowProctorWarning(false);
               setProctorAutoSubmit(true);
+              setSubmitting(true);
+              setTimeout(() => {
+                onSubmit();
+              }, 2000); // Show the auto-submit popup for 2 seconds
             }
             return 0;
           }
@@ -89,7 +97,7 @@ const QuizPage = ({
     } else {
       clearInterval(proctorIntervalRef.current);
     }
-  }, [showProctorWarning]);
+  }, [showProctorWarning, onSubmit]);
 
   // If proctorAutoSubmit is set (after 5th switch or timeout), always auto-submit
   useEffect(() => {
@@ -105,11 +113,42 @@ const QuizPage = ({
   useEffect(() => {
     const handleCopy = (e) => {
       e.preventDefault();
-      alert("Proctoring: Copying is not allowed!");
+      setCopyAttemptCount((prev) => {
+        const newCount = prev + 1;
+        // Save to Firestore
+        if (user?.uid) {
+          setDoc(
+            doc(db, "quiz_responses", user.uid),
+            { copyAttemptCount: newCount },
+            { merge: true }
+          );
+        }
+        return newCount;
+      });
+      setShowCopyWarning(true);
     };
     document.addEventListener("copy", handleCopy);
     return () => document.removeEventListener("copy", handleCopy);
-  }, []);
+  }, [user, proctorAutoSubmit, submitting]);
+
+  // Auto-submit if copy attempts exceed limit
+  useEffect(() => {
+    if (copyAttemptCount >= MAX_COPY_ATTEMPTS && !submitting) {
+      setShowCopyWarning(false);
+      setProctorAutoSubmit(true);
+      setSubmitting(true);
+      setTimeout(() => {
+        onSubmit();
+      }, 2000); // Show the auto-submit popup for 2 seconds
+    }
+  }, [copyAttemptCount, submitting, onSubmit]);
+
+  // Restore copyAttemptCount from Firestore on mount (if present)
+  useEffect(() => {
+    if (typeof initialCopyAttemptCount === "number") {
+      setCopyAttemptCount(initialCopyAttemptCount);
+    }
+  }, [initialCopyAttemptCount]);
 
   const handleAnswer = async (index, answer) => {
     const updated = [...answers];
@@ -215,7 +254,7 @@ const QuizPage = ({
         {questions.map((q, index) => (
           <div
             key={index}
-            className="p-6 border border-gray-300 rounded-md shadow-md bg-white hover:shadow-lg transition"
+            className="p-6 border border-gray-300 rounded-md shadow-md bg-white hover:shadow-lg transition mb-6"
           >
             <h4 className="text-xl font-bold mb-4 text-gray-800 leading-snug tracking-wide">
               {index + 1}. {q.question}
@@ -265,81 +304,192 @@ const QuizPage = ({
       {showProctorWarning &&
         tabSwitchCount <= MAX_TAB_SWITCHES &&
         !proctorAutoSubmit && (
-          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-            <div className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-md w-full border-2 border-blue-300 animate-fade-in">
-              <h2 className="text-3xl font-extrabold mb-4 text-blue-800 tracking-tight">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm">
+            <div className="relative bg-white/80 backdrop-blur-lg p-6 sm:p-10 rounded-3xl shadow-2xl text-center max-w-xs sm:max-w-md w-[90vw] border-2 border-blue-200 animate-fade-in flex flex-col items-center">
+              <h2 className="text-2xl sm:text-3xl font-extrabold mb-3 sm:mb-4 text-blue-800 tracking-tight drop-shadow-lg">
+                <span className="inline-block align-middle mr-2">⚠️</span>
                 Proctoring Alert
               </h2>
-              <div className="flex flex-col items-center justify-center mb-4">
-                <span className="text-lg text-gray-700 font-medium mb-2">
+              <div className="flex flex-col items-center justify-center mb-3 sm:mb-4 w-full">
+                <span className="text-base sm:text-lg text-gray-700 font-medium mb-1 sm:mb-2">
                   Tab switching is{" "}
                   <span className="text-red-600 font-bold">prohibited</span>{" "}
                   during the quiz.
                 </span>
-                <span className="text-base text-gray-600 mb-2">
+                <span className="text-sm sm:text-base text-gray-600 mb-2 w-full">
                   {tabSwitchCount < MAX_TAB_SWITCHES ? (
                     <>
-                      You have{" "}
-                      <span className="font-bold text-blue-700 text-xl">
+                      You have
+                      <span className="font-bold text-blue-700 text-xl sm:text-2xl mx-1">
                         {MAX_TAB_SWITCHES - tabSwitchCount}
-                      </span>{" "}
+                      </span>
                       tab switch attempt(s) left.
                       <br />
-                      If you do not return and click OK within
-                      <span className="inline-block mx-2 px-3 py-1 bg-blue-100 text-blue-800 font-bold rounded-full text-2xl align-middle border border-blue-300 animate-pulse">
-                        {proctorCountdown}
+                      If you do not return and click Resume within
+                      <span className="inline-flex items-center justify-center mx-2 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-blue-200 to-blue-400 text-blue-900 font-extrabold text-2xl sm:text-3xl border-4 border-blue-300 shadow-lg animate-pulse relative">
+                        <svg
+                          className="absolute top-0 left-0 w-full h-full"
+                          viewBox="0 0 40 40"
+                        >
+                          <circle
+                            cx="20"
+                            cy="20"
+                            r="18"
+                            fill="none"
+                            stroke="#3b82f6"
+                            strokeWidth="3"
+                            strokeDasharray="113"
+                            strokeDashoffset={`${
+                              113 - (proctorCountdown / 15) * 113
+                            }`}
+                          />
+                        </svg>
+                        <span className="relative z-10">
+                          {proctorCountdown}
+                        </span>
                       </span>
                       seconds, your quiz will be auto-submitted.
                     </>
                   ) : tabSwitchCount === MAX_TAB_SWITCHES ? (
                     <>
-                      You have{" "}
-                      <span className="font-bold text-blue-700 text-xl">0</span>{" "}
+                      You have
+                      <span className="font-bold text-blue-700 text-xl sm:text-2xl mx-1">
+                        0
+                      </span>
                       tab switch attempt(s) left.
                       <br />
-                      Auto-submitting in
-                      <span className="inline-block mx-2 px-3 py-1 bg-red-100 text-red-700 font-bold rounded-full text-2xl align-middle border border-red-300 animate-pulse">
-                        {proctorCountdown}
+                      <span className="font-bold text-red-700">
+                        Auto-submitting...
                       </span>
-                      seconds.
                     </>
                   ) : null}
                 </span>
               </div>
-              <button
-                className={`mt-4 px-8 py-3 rounded-lg text-lg font-bold shadow transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 ${
-                  proctorCountdown === 0
-                    ? "bg-blue-300 text-white cursor-not-allowed"
-                    : "bg-blue-700 hover:bg-blue-800 text-white"
-                }`}
-                onClick={handleProctorOk}
-                disabled={proctorCountdown === 0}
-              >
-                OK, Resume Quiz
-              </button>
+              {/* Only show Resume button if attempts left > 0 */}
+              {tabSwitchCount < MAX_TAB_SWITCHES && (
+                <button
+                  className={`mt-3 sm:mt-4 px-8 py-3 rounded-xl text-lg sm:text-xl font-bold shadow-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 w-full sm:w-auto
+                    ${
+                      proctorCountdown === 0
+                        ? "bg-blue-300 text-white cursor-not-allowed opacity-70"
+                        : "bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white"
+                    }
+                  `}
+                  onClick={handleProctorOk}
+                  disabled={proctorCountdown === 0}
+                >
+                  <span className="inline-block align-middle mr-2">🔓</span>
+                  Resume Quiz
+                </button>
+              )}
             </div>
           </div>
         )}
-      {proctorAutoSubmit && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-2xl shadow-2xl text-center max-w-md w-full border-2 border-red-300 animate-fade-in">
-            <h2 className="text-3xl font-extrabold mb-4 text-red-700 tracking-tight">
-              Auto-Submitting
+      {/* Tab switch auto-submit popup */}
+      {proctorAutoSubmit &&
+        !(copyAttemptCount >= MAX_COPY_ATTEMPTS && submitting) && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm">
+            <div className="bg-white/80 backdrop-blur-lg p-6 sm:p-10 rounded-3xl shadow-2xl text-center max-w-xs sm:max-w-md w-[90vw] border-2 border-red-200 animate-fade-in flex flex-col items-center">
+              <h2 className="text-2xl sm:text-3xl font-extrabold mb-3 sm:mb-4 text-red-700 tracking-tight drop-shadow-lg">
+                <span className="inline-block align-middle mr-2">⏳</span>
+                Auto-Submitting
+              </h2>
+              <p className="text-base sm:text-lg text-gray-700 font-medium mb-3 sm:mb-4">
+                Tab switching is{" "}
+                <span className="text-red-600 font-bold">prohibited</span> and
+                you have exceeded the allowed threshold.
+                <br />
+                <span className="text-blue-700 font-bold">
+                  Your quiz is being auto-submitted.
+                </span>
+              </p>
+              <div className="flex items-center justify-center mt-2">
+                <span className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-red-200 to-red-400 text-red-700 font-extrabold text-2xl sm:text-3xl border-4 border-red-300 shadow-lg animate-pulse">
+                  <span className="relative z-10">Please wait...</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      {/* Copying auto-submit popup (separate) */}
+      {copyAttemptCount >= MAX_COPY_ATTEMPTS && submitting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm">
+          <div className="bg-white/90 backdrop-blur-lg p-6 sm:p-10 rounded-3xl shadow-2xl text-center max-w-xs sm:max-w-md w-[90vw] border-2 border-red-200 animate-fade-in flex flex-col items-center">
+            <h2 className="text-2xl sm:text-3xl font-extrabold mb-3 sm:mb-4 text-red-700 tracking-tight drop-shadow-lg">
+              <span className="inline-block align-middle mr-2">🚫</span>
+              Copy Attempts Exceeded
             </h2>
-            <p className="text-lg text-gray-700 font-medium mb-4">
-              Tab switching is{" "}
-              <span className="text-red-600 font-bold">prohibited</span> and you
-              have exceeded the allowed threshold.
+            <p className="text-base sm:text-lg text-gray-700 font-medium mb-3 sm:mb-4">
+              Copying is{" "}
+              <span className="text-red-600 font-bold">not allowed</span> and
+              you have exceeded the allowed attempts.
               <br />
               <span className="text-blue-700 font-bold">
                 Your quiz is being auto-submitted.
               </span>
             </p>
-            <div className="flex items-center justify-center mt-4">
-              <span className="inline-block px-4 py-2 bg-red-100 text-red-700 font-bold rounded-full text-2xl border border-red-300 animate-pulse">
-                Please wait...
+            <div className="flex items-center justify-center mt-2">
+              <span className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-tr from-red-200 to-red-400 text-red-700 font-extrabold text-2xl sm:text-3xl border-4 border-red-300 shadow-lg animate-pulse">
+                <span className="relative z-10">Please wait...</span>
               </span>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Copying Prohibited Popup */}
+      {showCopyWarning && !proctorAutoSubmit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 backdrop-blur-sm">
+          <div className="relative bg-white/90 backdrop-blur-lg p-6 sm:p-10 rounded-3xl shadow-2xl text-center max-w-xs sm:max-w-md w-[90vw] border-2 border-red-200 animate-fade-in flex flex-col items-center">
+            <h2 className="text-2xl sm:text-3xl font-extrabold mb-3 sm:mb-4 text-red-700 tracking-tight drop-shadow-lg">
+              <span className="inline-block align-middle mr-2">🚫</span>
+              Copying Prohibited
+            </h2>
+            <div className="flex flex-col items-center justify-center mb-3 sm:mb-4 w-full">
+              <span className="text-base sm:text-lg text-gray-700 font-medium mb-1 sm:mb-2">
+                Copying is{" "}
+                <span className="text-red-600 font-bold">not allowed</span>{" "}
+                during the quiz.
+              </span>
+              <span className="text-sm sm:text-base text-gray-600 mb-2 w-full">
+                {copyAttemptCount < MAX_COPY_ATTEMPTS ? (
+                  <>
+                    You have
+                    <span className="font-bold text-red-700 text-xl sm:text-2xl mx-1">
+                      {MAX_COPY_ATTEMPTS - copyAttemptCount}
+                    </span>
+                    copy attempt(s) left.
+                    <br />
+                    If you try to copy again, your quiz will be{" "}
+                    <span className="font-bold text-red-700">
+                      auto-submitted
+                    </span>
+                    .<br />
+                    <span className="text-blue-700 font-semibold">
+                      Every action is being recorded.
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    You have
+                    <span className="font-bold text-red-700 text-xl sm:text-2xl mx-1">
+                      0
+                    </span>
+                    copy attempts left.
+                    <br />
+                    <span className="font-bold text-red-700">
+                      Auto-submitting...
+                    </span>
+                  </>
+                )}
+              </span>
+            </div>
+            <button
+              className="mt-3 sm:mt-4 px-8 py-3 rounded-xl text-lg sm:text-xl font-bold shadow-lg transition duration-200 focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-opacity-50 w-full sm:w-auto bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white"
+              onClick={() => setShowCopyWarning(false)}
+              disabled={copyAttemptCount >= MAX_COPY_ATTEMPTS}
+            >
+              <span className="inline-block align-middle mr-2">✖️</span>Close
+            </button>
           </div>
         </div>
       )}

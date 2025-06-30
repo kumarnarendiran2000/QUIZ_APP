@@ -106,6 +106,8 @@ const AdminDashboard = () => {
                 <th className="px-4 py-3 text-red-700">Wrong</th>
                 <th className="px-4 py-3">Time Taken</th>
                 <th className="px-4 py-3">Completed At</th>
+                <th className="px-4 py-3">Tab Switches</th>
+                <th className="px-4 py-3">Copy Attempts</th>
                 <th className="px-4 py-3 print:hidden">Action</th>
               </tr>
             </thead>
@@ -129,6 +131,16 @@ const AdminDashboard = () => {
                     {s.completedAt
                       ? new Date(s.completedAt).toLocaleString()
                       : "N/A"}
+                  </td>
+                  <td className="px-4 py-2">
+                    {typeof s.tabSwitchCount === "number"
+                      ? s.tabSwitchCount
+                      : 0}
+                  </td>
+                  <td className="px-4 py-2">
+                    {typeof s.copyAttemptCount === "number"
+                      ? s.copyAttemptCount
+                      : 0}
                   </td>
                   <td className="px-4 py-2 print:hidden">
                     <button

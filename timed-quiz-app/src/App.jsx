@@ -21,6 +21,7 @@ const App = () => {
   const [detailedResults, setDetailedResults] = useState([]);
   const [quizDuration, setQuizDuration] = useState("N/A");
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
+  const [copyAttemptCount, setCopyAttemptCount] = useState(0);
 
   const ADMIN_EMAILS = [
     "kumarnarendiran2211@gmail.com",
@@ -77,7 +78,9 @@ const App = () => {
           // On reload/relogin, restore the value from Firestore as-is (do not increment)
           const restoredTabSwitchCount = data.tabSwitchCount || 0;
           setTabSwitchCount(restoredTabSwitchCount);
-          if (restoredTabSwitchCount > 5) {
+          const restoredCopyAttemptCount = data.copyAttemptCount || 0;
+          setCopyAttemptCount(restoredCopyAttemptCount);
+          if (restoredTabSwitchCount > 5 || restoredCopyAttemptCount > 2) {
             await handleSubmit();
             return;
           }
@@ -208,7 +211,8 @@ const App = () => {
           setTimeLeft={setTimeLeft}
           onSubmit={handleSubmit}
           user={user}
-          initialTabSwitchCount={tabSwitchCount} // <-- pass as prop
+          initialTabSwitchCount={tabSwitchCount}
+          initialCopyAttemptCount={copyAttemptCount}
         />
       )}
       {step === "result" && (
