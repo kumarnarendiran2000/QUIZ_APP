@@ -20,8 +20,8 @@ const QuizPage = ({
   const [proctorCountdown, setProctorCountdown] = useState(0);
   const [showCopyWarning, setShowCopyWarning] = useState(false);
   const [copyAttemptCount, setCopyAttemptCount] = useState(0);
-  const MAX_TAB_SWITCHES = 5;
-  const MAX_COPY_ATTEMPTS = 2;
+  const MAX_TAB_SWITCHES = 10;
+  const MAX_COPY_ATTEMPTS = 10;
   const [submitting, setSubmitting] = useState(false);
 
   const timerRef = useRef(null);
@@ -61,7 +61,7 @@ const QuizPage = ({
           return newCount;
         });
         setShowProctorWarning(true);
-        setProctorCountdown(15);
+        setProctorCountdown(20);
       }
     };
     document.addEventListener("visibilitychange", handleVisibility);
@@ -399,6 +399,10 @@ const QuizPage = ({
                 <span className="text-red-600 font-bold">prohibited</span> and
                 you have exceeded the allowed threshold.
                 <br />
+                <span className="font-bold text-blue-700">
+                  0 tab switch attempt(s) left.
+                </span>
+                <br />
                 <span className="text-blue-700 font-bold">
                   Your quiz is being auto-submitted.
                 </span>
@@ -423,6 +427,10 @@ const QuizPage = ({
               Copying is{" "}
               <span className="text-red-600 font-bold">not allowed</span> and
               you have exceeded the allowed attempts.
+              <br />
+              <span className="font-bold text-red-700">
+                0 copy attempts left.
+              </span>
               <br />
               <span className="text-blue-700 font-bold">
                 Your quiz is being auto-submitted.
