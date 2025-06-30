@@ -81,7 +81,7 @@ const App = () => {
           const restoredCopyAttemptCount = data.copyAttemptCount || 0;
           setCopyAttemptCount(restoredCopyAttemptCount);
           if (restoredTabSwitchCount >= 10 || restoredCopyAttemptCount >= 10) {
-            await handleSubmit();
+            setStep("quiz");
             return;
           }
           setStep("quiz");
