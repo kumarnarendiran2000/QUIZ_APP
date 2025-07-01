@@ -21,9 +21,11 @@ const Login = ({ onLogin }) => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
       <div className="w-full max-w-2xl bg-white p-8 rounded-lg shadow-md">
-        <h1 className="text-4xl font-bold text-center text-blue-700 mb-4">
-          🎓 Welcome to the Quiz!
-        </h1>
+        <div className="mb-4">
+          <h1 className="text-4xl font-bold text-center text-blue-700 mb-4">
+            🎓 Welcome to the Test!
+          </h1>
+        </div>
         <p className="text-center text-gray-600 mb-6 text-lg">
           Please read the instructions carefully before starting.
         </p>
@@ -35,45 +37,39 @@ const Login = ({ onLogin }) => {
           </li>
           <li>
             After logging in, fill in your{" "}
-            <strong>name and mobile number</strong> to begin.
+            <strong>name, registration number, and mobile number</strong> to
+            begin.
           </li>
           <li>
             The quiz is <strong>time-based</strong> — you’ll have{" "}
-            <span className="text-blue-700 font-medium">10 minutes</span> to
-            answer <strong>10 questions</strong>.
+            <span className="text-blue-700 font-medium">20 minutes</span> to
+            answer <strong>40 questions</strong>.
           </li>
           <li>
             <span className="text-red-700 font-bold">
               Switching tabs or minimizing the window is strictly prohibited.
-            </span>{" "}
-            If you do, a warning popup will appear with a{" "}
-            <strong>20-second countdown</strong>. You have{" "}
-            <strong>10 tab switch attempts</strong> in total. If you reach 0
-            attempts, your quiz will be{" "}
-            <span className="font-bold">auto-submitted</span>.
+            </span>
           </li>
           <li>
             <span className="text-red-700 font-bold">
-              Copying any quiz content is also strictly prohibited.
-            </span>{" "}
-            Each copy attempt triggers a warning popup. You have{" "}
-            <strong>10 copy attempts</strong> in total. On the 10th attempt,
-            your quiz will be <span className="font-bold">auto-submitted</span>.
+              Copying any quiz content is strictly prohibited.
+            </span>
           </li>
           <li>
-            During a warning popup, you must click the respective{" "}
-            <strong>action button</strong> to resume the test within{" "}
-            <strong>20 seconds</strong>. Failing to do so will also auto-submit
-            your quiz.
+            <span className="text-yellow-700 font-semibold">
+              If you perform any prohibited action, a warning popup will appear.
+              You must read the warning and click the action button to resume
+              the quiz within the time mentioned. If you do not respond in time,
+              your quiz will be auto-submitted.
+            </span>
           </li>
           <li>
             If you close the tab, reload, or relogin by accident, you will{" "}
             <strong>resume where you left off</strong> — but the timer continues
             in the background, including while any proctoring warning popup is
-            on screen, and your proctoring attempt counts are restored.{" "}
+            on screen.{" "}
             <strong>
-              Reloading or relogging in is also counted as one tab switch and
-              deducted from your tab switch attempts.
+              Reloading or relogging in is also counted as one tab switch.
             </strong>
           </li>
           <li>
