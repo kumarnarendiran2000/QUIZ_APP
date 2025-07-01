@@ -26,6 +26,7 @@ const App = () => {
   const ADMIN_EMAILS = [
     "kumarnarendiran2211@gmail.com",
     "kumargowtham1994@gmail.com",
+    "anesthesia@navodaya.edu.in",
   ];
 
   useEffect(() => {
