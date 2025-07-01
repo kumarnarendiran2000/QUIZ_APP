@@ -63,10 +63,13 @@ const ResultPage = ({
           <strong>Name:</strong> {userInfo.name}
         </p>
         <p>
-          <strong>Email:</strong> {userEmail}
+          <strong>Registration Number:</strong> {userInfo.regno}
         </p>
         <p>
           <strong>Mobile:</strong> {userInfo.mobile}
+        </p>
+        <p>
+          <strong>Email:</strong> {userEmail}
         </p>
         <p>
           <strong>Score:</strong> {correct} / {questions.length} &nbsp;|&nbsp;

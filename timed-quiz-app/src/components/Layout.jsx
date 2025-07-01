@@ -19,7 +19,7 @@ const Layout = ({ children }) => {
           {/* Title - vertically centered next to logo */}
           <div className="text-center">
             <h1 className="text-lg sm:text-2xl font-bold text-blue-900 leading-tight">
-              Navodaya Medical College Quiz App
+              Navodaya Medical College Quiz
             </h1>
             <p className="text-sm sm:text-base text-gray-700 -mt-1">
               {/* Optionally add subtitle here */}

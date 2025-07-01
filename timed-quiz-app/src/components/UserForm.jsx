@@ -51,7 +51,28 @@ const UserForm = ({ userInfo, setUserInfo, onStartQuiz }) => {
           💼 Enter Your Details
         </h2>
 
-        {/* Registration Number Field */}
+        {/* Name Field */}
+        <div className="mb-4">
+          <label className="block text-gray-700 text-lg mb-2" htmlFor="name">
+            Full Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            id="name"
+            value={userInfo.name}
+            onChange={(e) => setUserInfo({ ...userInfo, name: e.target.value })}
+            className={`w-full px-4 py-2 rounded border text-lg focus:outline-none ${
+              errors.name
+                ? "border-red-500 bg-red-50"
+                : "border-gray-300 focus:border-blue-500"
+            }`}
+          />
+          {errors.name && (
+            <p className="text-red-600 text-sm mt-1">{errors.name}</p>
+          )}
+        </div>
+
+        {/* Registration Number Field (moved up) */}
         <div className="mb-4">
           <label className="block text-gray-700 text-lg mb-2" htmlFor="regno">
             Registration Number <span className="text-red-500">*</span>
@@ -74,26 +95,7 @@ const UserForm = ({ userInfo, setUserInfo, onStartQuiz }) => {
           )}
         </div>
 
-        <div className="mb-4">
-          <label className="block text-gray-700 text-lg mb-2" htmlFor="name">
-            Full Name <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            id="name"
-            value={userInfo.name}
-            onChange={(e) => setUserInfo({ ...userInfo, name: e.target.value })}
-            className={`w-full px-4 py-2 rounded border text-lg focus:outline-none ${
-              errors.name
-                ? "border-red-500 bg-red-50"
-                : "border-gray-300 focus:border-blue-500"
-            }`}
-          />
-          {errors.name && (
-            <p className="text-red-600 text-sm mt-1">{errors.name}</p>
-          )}
-        </div>
-
+        {/* Mobile Field */}
         <div className="mb-6">
           <label className="block text-gray-700 text-lg mb-2" htmlFor="mobile">
             Mobile Number <span className="text-red-500">*</span>
