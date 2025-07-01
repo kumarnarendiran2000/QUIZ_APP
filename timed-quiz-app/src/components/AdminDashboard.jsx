@@ -12,6 +12,8 @@ const AdminDashboard = () => {
   const [viewing, setViewing] = useState(null);
   const [isSorted, setIsSorted] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // {id, name} or null
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
   const tableRef = useRef();
 
   useEffect(() => {
@@ -72,8 +74,66 @@ const AdminDashboard = () => {
     }
   };
 
+  // Handle select all toggle
+  const handleSelectAll = (e) => {
+    const checked = e.target.checked;
+    setSelectAll(checked);
+    if (checked) {
+      setSelectedIds(submissions.map((s) => s.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  // Handle individual row checkbox
+  const handleSelectRow = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((sid) => sid !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk delete modal state
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+
+  // Bulk delete handler (opens modal)
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    setShowBulkDeleteModal(true);
+  };
+
+  // Confirm bulk delete
+  const confirmBulkDelete = async () => {
+    setBulkDeleteLoading(true);
+    for (const id of selectedIds) {
+      try {
+        await deleteDoc(doc(db, "quiz_responses", id));
+      } catch (err) {
+        alert("Failed to delete record: " + err.message);
+      }
+    }
+    setSelectedIds([]);
+    setSelectAll(false);
+    setBulkDeleteLoading(false);
+    setShowBulkDeleteModal(false);
+  };
+
   return (
     <div className="max-w-8xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
+      {/* Bulk Delete Button */}
+      {selectedIds.length > 0 && (
+        <div className="mb-4 flex items-center gap-4">
+          <button
+            onClick={handleBulkDelete}
+            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg shadow transition"
+          >
+            Delete Selected ({selectedIds.length})
+          </button>
+          <span className="text-gray-600 text-sm">
+            {selectedIds.length} selected
+          </span>
+        </div>
+      )}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-4xl font-bold border-b pb-2 text-gray-800 print:hidden">
           🧾 Admin Dashboard
@@ -107,6 +167,14 @@ const AdminDashboard = () => {
           <table className="min-w-full text-sm sm:text-base text-left print:text-xs">
             <thead className="bg-gray-100 text-gray-700 uppercase font-semibold">
               <tr>
+                <th className="px-2 py-3">
+                  <input
+                    type="checkbox"
+                    checked={selectAll}
+                    onChange={handleSelectAll}
+                    aria-label="Select all"
+                  />
+                </th>
                 <th className="px-4 py-3">S. No</th>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Registration Number</th>
@@ -129,8 +197,18 @@ const AdminDashboard = () => {
               {submissions.map((s, idx) => (
                 <tr
                   key={s.id}
-                  className="border-t hover:bg-gray-50 text-gray-800"
+                  className={`border-t hover:bg-gray-50 text-gray-800 ${
+                    selectedIds.includes(s.id) ? "bg-blue-50" : ""
+                  }`}
                 >
+                  <td className="px-2 py-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(s.id)}
+                      onChange={() => handleSelectRow(s.id)}
+                      aria-label={`Select row ${idx + 1}`}
+                    />
+                  </td>
                   <td className="px-4 py-2">{idx + 1}</td>
                   <td className="px-4 py-2">{s.name}</td>
                   <td className="px-4 py-2">{s.regno || "-"}</td>
@@ -244,7 +322,7 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Custom Delete Confirmation Modal */}
+      {/* Custom Delete Confirmation Modal (Single) */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-xs sm:max-w-sm w-[90vw] text-center flex flex-col items-center animate-fade-in border-2 border-red-200">
@@ -270,6 +348,45 @@ const AdminDashboard = () => {
               </button>
               <button
                 onClick={() => setDeleteTarget(null)}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-lg shadow transition w-1/2"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Bulk Delete Confirmation Modal */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 max-w-xs sm:max-w-sm w-[90vw] text-center flex flex-col items-center animate-fade-in border-2 border-red-200">
+            <h2 className="text-xl sm:text-2xl font-bold text-red-700 mb-3">
+              Confirm Bulk Deletion
+            </h2>
+            <p className="text-gray-700 mb-4 text-base sm:text-lg">
+              Are you sure you want to delete
+              <span className="font-semibold text-red-700">
+                {" "}
+                {selectedIds.length}{" "}
+              </span>
+              selected record(s)?
+              <br />
+              This cannot be undone.
+            </p>
+            <div className="flex gap-4 w-full justify-center mt-2">
+              <button
+                onClick={confirmBulkDelete}
+                disabled={bulkDeleteLoading}
+                className={`bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg shadow transition w-1/2 ${
+                  bulkDeleteLoading ? "opacity-60 cursor-not-allowed" : ""
+                }`}
+              >
+                {bulkDeleteLoading ? "Deleting..." : "Delete"}
+              </button>
+              <button
+                onClick={() => setShowBulkDeleteModal(false)}
+                disabled={bulkDeleteLoading}
                 className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-lg shadow transition w-1/2"
               >
                 Cancel
