@@ -7,9 +7,14 @@ import {
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { questions } from "../data/questions";
+import { exportSubmissionsToExcel } from "../utils/exportToExcel";
 import { doc, deleteDoc } from "firebase/firestore";
 
 const AdminDashboard = () => {
+  // Export to Excel handler (must be inside the component to access state)
+  const handleExportToExcel = () => {
+    exportSubmissionsToExcel(submissions);
+  };
   // Test mode state (pre/post), loaded from Firestore
   const [testMode, setTestMode] = useState("post");
   const [testModeLoading, setTestModeLoading] = useState(true);
@@ -150,8 +155,8 @@ const AdminDashboard = () => {
 
   return (
     <div className="max-w-8xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
-      {/* Test Mode Selector */}
-      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-2">
+      {/* Test Mode Selector (hidden on print) */}
+      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-2 print:hidden">
         <label
           className="font-semibold text-blue-900 text-base sm:text-lg"
           htmlFor="test-mode-select"
@@ -209,6 +214,12 @@ const AdminDashboard = () => {
             className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 print:hidden"
           >
             Download Results as PDF
+          </button>
+          <button
+            onClick={handleExportToExcel}
+            className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 print:hidden"
+          >
+            Export to Excel
           </button>
         </div>
       </div>
