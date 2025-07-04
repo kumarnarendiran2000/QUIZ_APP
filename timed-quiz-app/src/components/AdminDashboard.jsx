@@ -8,6 +8,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { questions } from "../data/questions";
 import { exportSubmissionsToExcel } from "../utils/exportToExcel";
+import AdminVisualizations from "./AdminVisualizations";
 import { doc, deleteDoc } from "firebase/firestore";
 
 const AdminDashboard = () => {
@@ -153,10 +154,20 @@ const AdminDashboard = () => {
     setShowBulkDeleteModal(false);
   };
 
+  // Visualizations modal state
+  const [showVisualizations, setShowVisualizations] = useState(false);
+
   return (
     <div className="max-w-8xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
-      {/* Test Mode Selector (hidden on print) */}
-      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-2 print:hidden">
+      {/* Enhanced Admin Dashboard Heading */}
+      <h2
+        className="text-xl font-semibold text-blue-800 tracking-wide mb-8 bg-blue-50 border border-blue-200 px-6 py-3 rounded-xl shadow-lg w-full flex justify-center items-center mx-auto"
+        style={{ maxWidth: "420px" }}
+      >
+        🧾 Admin Dashboard
+      </h2>
+      {/* Test Mode Selector (hidden on print, highlighted, at top) */}
+      <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center gap-2 print:hidden bg-yellow-100 border-2 border-yellow-400 rounded-lg p-4 shadow">
         <label
           className="font-semibold text-blue-900 text-base sm:text-lg"
           htmlFor="test-mode-select"
@@ -184,12 +195,31 @@ const AdminDashboard = () => {
           </div>
         </span>
       </div>
+
+      {/* --- Visualizations Button (not shown on print) --- */}
+      <div className="mb-8 flex justify-end print:hidden">
+        <button
+          onClick={() => setShowVisualizations(true)}
+          className="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-3 rounded-lg shadow cursor-pointer"
+        >
+          View Visualizations
+        </button>
+      </div>
+
+      {/* --- Visualizations Modal --- */}
+      {showVisualizations && (
+        <AdminVisualizations
+          submissions={submissions}
+          onClose={() => setShowVisualizations(false)}
+        />
+      )}
+
       {/* Bulk Delete Button */}
       {selectedIds.length > 0 && (
         <div className="mb-4 flex items-center gap-4">
           <button
             onClick={handleBulkDelete}
-            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg shadow transition"
+            className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg shadow transition cursor-pointer"
           >
             Delete Selected ({selectedIds.length})
           </button>
@@ -198,26 +228,23 @@ const AdminDashboard = () => {
           </span>
         </div>
       )}
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-4xl font-bold border-b pb-2 text-gray-800 print:hidden">
-          🧾 Admin Dashboard
-        </h2>
+      <div className="flex justify-end items-center mb-6">
         <div className="flex gap-4">
           <button
             onClick={toggleSort}
-            className="bg-yellow-500 text-white px-4 py-2 rounded shadow hover:bg-yellow-600 print:hidden"
+            className="bg-yellow-500 text-white px-4 py-2 rounded shadow hover:bg-yellow-600 print:hidden cursor-pointer"
           >
             {isSorted ? "Reset Order" : "Sort by Score & Time"}
           </button>
           <button
             onClick={handlePrint}
-            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 print:hidden"
+            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 print:hidden cursor-pointer"
           >
             Download Results as PDF
           </button>
           <button
             onClick={handleExportToExcel}
-            className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 print:hidden"
+            className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 print:hidden cursor-pointer"
           >
             Export to Excel
           </button>
@@ -315,7 +342,7 @@ const AdminDashboard = () => {
                   <td className="px-4 py-2 print:hidden">
                     <button
                       onClick={() => setViewing(s)}
-                      className="text-blue-600 underline hover:text-blue-800 text-sm"
+                      className="text-blue-600 underline hover:text-blue-800 text-sm cursor-pointer"
                     >
                       View Result
                     </button>
@@ -325,7 +352,7 @@ const AdminDashboard = () => {
                       onClick={() =>
                         setDeleteTarget({ id: s.id, name: s.name })
                       }
-                      className="text-red-600 underline hover:text-red-800 text-sm"
+                      className="text-red-600 underline hover:text-red-800 text-sm cursor-pointer"
                     >
                       Delete
                     </button>
@@ -392,7 +419,7 @@ const AdminDashboard = () => {
 
           <button
             onClick={() => setViewing(null)}
-            className="mt-4 text-sm text-gray-600 underline hover:text-gray-800"
+            className="mt-4 text-sm text-gray-600 underline hover:text-gray-800 cursor-pointer"
           >
             ← Close Result View
           </button>
@@ -419,13 +446,13 @@ const AdminDashboard = () => {
             <div className="flex gap-4 w-full justify-center mt-2">
               <button
                 onClick={handleDelete}
-                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg shadow transition w-1/2"
+                className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg shadow transition w-1/2 cursor-pointer"
               >
                 Delete
               </button>
               <button
                 onClick={() => setDeleteTarget(null)}
-                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-lg shadow transition w-1/2"
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-lg shadow transition w-1/2 cursor-pointer"
               >
                 Cancel
               </button>
