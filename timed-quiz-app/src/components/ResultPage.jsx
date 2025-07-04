@@ -10,6 +10,7 @@ const ResultPage = ({
   answers,
   detailedResults,
   quizDuration,
+  testMode = "post",
 }) => {
   const correct = detailedResults.filter((r) => r.isCorrect).length;
   const wrong = detailedResults.length - correct;
@@ -87,63 +88,73 @@ const ResultPage = ({
         </p>
       </div>
 
-      {/* Results grouped by topic */}
-      <div className="mt-6 space-y-10">
-        {questionsByTopic.map(({ topic, questions: topicQuestions }) => (
-          <div key={topic}>
-            <h3 className="text-2xl font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2 uppercase tracking-wide">
-              {topic}
-            </h3>
-            <div className="space-y-5">
-              {topicQuestions.map((q) => {
-                const i = q.index;
-                const selected = answers[i];
-                const correct = correctAnswers[i];
-                const isCorrect = selected === correct;
-                const wasAnswered = typeof selected === "number";
-                return (
-                  <div
-                    key={i}
-                    className={`p-4 rounded-md border ${
-                      wasAnswered
-                        ? isCorrect
-                          ? "border-green-300 bg-green-50"
-                          : "border-red-300 bg-red-50"
-                        : "border-yellow-300 bg-yellow-50"
-                    }`}
-                  >
-                    <h4 className="font-semibold text-gray-800 mb-2">
-                      Q{i + 1}. {q.question}
-                    </h4>
-                    {q.options.map((opt, index) => (
-                      <div key={index} className="ml-4 text-lg">
-                        <span
-                          className={`${
-                            correct === index
-                              ? "font-bold text-green-700"
-                              : selected === index
-                              ? "text-red-600"
-                              : "text-gray-700"
-                          }`}
-                        >
-                          {index + 1}. {opt}
-                          {correct === index && " ✅"}
-                          {selected === index && selected !== correct && " ❌"}
-                        </span>
-                      </div>
-                    ))}
-                    {!wasAnswered && (
-                      <p className="mt-2 text-yellow-600 font-semibold">
-                        ❌ Unanswered
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
+      {/* Conditional rendering based on testMode */}
+      {testMode === "pre" ? (
+        <div className="mt-8 text-center text-xl text-blue-800 font-semibold">
+          Thank you for attending the test. Your responses have been recorded.
+          <br />
+          Please contact your instructor for further feedback.
+        </div>
+      ) : (
+        <div className="mt-6 space-y-10">
+          {questionsByTopic.map(({ topic, questions: topicQuestions }) => (
+            <div key={topic}>
+              <h3 className="text-2xl font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2 uppercase tracking-wide">
+                {topic}
+              </h3>
+              <div className="space-y-5">
+                {topicQuestions.map((q) => {
+                  const i = q.index;
+                  const selected = answers[i];
+                  const correct = correctAnswers[i];
+                  const isCorrect = selected === correct;
+                  const wasAnswered = typeof selected === "number";
+                  return (
+                    <div
+                      key={i}
+                      className={`p-4 rounded-md border ${
+                        wasAnswered
+                          ? isCorrect
+                            ? "border-green-300 bg-green-50"
+                            : "border-red-300 bg-red-50"
+                          : "border-yellow-300 bg-yellow-50"
+                      }`}
+                    >
+                      <h4 className="font-semibold text-gray-800 mb-2">
+                        Q{i + 1}. {q.question}
+                      </h4>
+                      {q.options.map((opt, index) => (
+                        <div key={index} className="ml-4 text-lg">
+                          <span
+                            className={`${
+                              correct === index
+                                ? "font-bold text-green-700"
+                                : selected === index
+                                ? "text-red-600"
+                                : "text-gray-700"
+                            }`}
+                          >
+                            {index + 1}. {opt}
+                            {correct === index && " ✅"}
+                            {selected === index &&
+                              selected !== correct &&
+                              " ❌"}
+                          </span>
+                        </div>
+                      ))}
+                      {!wasAnswered && (
+                        <p className="mt-2 text-yellow-600 font-semibold">
+                          ❌ Unanswered
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

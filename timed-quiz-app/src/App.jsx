@@ -7,12 +7,14 @@ import ResultPage from "./components/ResultPage";
 import AdminDashboard from "./components/AdminDashboard";
 import Layout from "./components/Layout";
 import { db } from "./utils/firebase";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { questions } from "./data/questions";
 
 const QUIZ_DURATION = 1200; // 20 minutes in seconds
 
 const App = () => {
+  // Strict test mode: lock mode at quiz start for each user
+  const [testModeAtStart, setTestModeAtStart] = useState(null);
   const [step, setStep] = useState("login");
   const [user, setUser] = useState(null);
   const [userInfo, setUserInfo] = useState({ name: "", mobile: "", regno: "" });
@@ -22,6 +24,21 @@ const App = () => {
   const [quizDuration, setQuizDuration] = useState("N/A");
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
   const [copyAttemptCount, setCopyAttemptCount] = useState(0);
+  // New: testMode can be 'pre' or 'post'
+  const [testMode, setTestMode] = useState("post");
+
+  // Load test mode from Firestore on mount and listen for changes
+  useEffect(() => {
+    const ref = doc(db, "quiz_settings", "default");
+    const unsubscribe = onSnapshot(ref, (snap) => {
+      if (snap.exists()) {
+        setTestMode(snap.data().testMode || "post");
+      } else {
+        setTestMode("post");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
 
   const ADMIN_EMAILS = [
     "kumarnarendiran2211@gmail.com",
@@ -58,6 +75,7 @@ const App = () => {
         setAnswers(data.answers || []);
         setDetailedResults(data.detailedResults || []);
         setQuizDuration(data.quizDuration || "N/A");
+        setTestModeAtStart(data.testModeAtStart || "post");
         setStep("result");
         return;
       }
@@ -108,6 +126,19 @@ const App = () => {
   const startQuiz = async () => {
     const initialAnswers = Array(questions.length).fill(null);
 
+    // Fetch the current test mode from Firestore
+    let mode = "post";
+    try {
+      const refSettings = doc(db, "quiz_settings", "default");
+      const snap = await getDoc(refSettings);
+      if (snap.exists()) {
+        mode = snap.data().testMode || "post";
+      }
+    } catch {
+      // fallback: mode remains 'post'
+    }
+    setTestModeAtStart(mode);
+
     if (user) {
       const ref = doc(db, "quiz_responses", user.uid);
       await setDoc(
@@ -119,6 +150,7 @@ const App = () => {
           regno: userInfo.regno,
           startedAt: Date.now(),
           answers: initialAnswers,
+          testModeAtStart: mode,
         },
         { merge: true }
       );
@@ -233,9 +265,12 @@ const App = () => {
           answers={answers}
           detailedResults={detailedResults}
           quizDuration={quizDuration}
+          testMode={testModeAtStart || testMode}
         />
       )}
-      {step === "admin" && <AdminDashboard />}
+      {step === "admin" && (
+        <AdminDashboard testMode={testMode} setTestMode={setTestMode} />
+      )}
     </Layout>
   );
 };

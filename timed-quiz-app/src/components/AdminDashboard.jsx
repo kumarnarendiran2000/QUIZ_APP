@@ -1,11 +1,41 @@
 // src/components/AdminDashboard.jsx
 import React, { useEffect, useRef, useState } from "react";
+import {
+  getTestMode,
+  setTestMode as saveTestMode,
+} from "../utils/quizSettings";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { questions } from "../data/questions";
 import { doc, deleteDoc } from "firebase/firestore";
 
 const AdminDashboard = () => {
+  // Test mode state (pre/post), loaded from Firestore
+  const [testMode, setTestMode] = useState("post");
+  const [testModeLoading, setTestModeLoading] = useState(true);
+
+  // Load test mode from Firestore on mount
+  useEffect(() => {
+    let mounted = true;
+    getTestMode().then((mode) => {
+      if (mounted) {
+        setTestMode(mode);
+        setTestModeLoading(false);
+      }
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // When changed, update Firestore and app state
+  const handleTestModeChange = async (e) => {
+    const mode = e.target.value;
+    setTestMode(mode);
+    setTestModeLoading(true);
+    await saveTestMode(mode);
+    setTestModeLoading(false);
+  };
   const [submissions, setSubmissions] = useState([]);
   const [originalOrder, setOriginalOrder] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -120,6 +150,35 @@ const AdminDashboard = () => {
 
   return (
     <div className="max-w-8xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
+      {/* Test Mode Selector */}
+      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-2">
+        <label
+          className="font-semibold text-blue-900 text-base sm:text-lg"
+          htmlFor="test-mode-select"
+        >
+          Test Mode:
+        </label>
+        <select
+          id="test-mode-select"
+          value={testMode}
+          onChange={handleTestModeChange}
+          disabled={testModeLoading}
+          className="border rounded px-3 py-1 text-base bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          <option value="pre">Pre Test</option>
+          <option value="post">Post Test</option>
+        </select>
+        <span className="text-gray-600 text-sm mt-1 sm:mt-0">
+          <div className="mb-1">
+            <span className="font-medium text-blue-700">Pre Test</span>: Only
+            score and summary shown to participants.
+          </div>
+          <div>
+            <span className="font-medium text-blue-700">Post Test</span>: Full
+            results with questions and correct answers shown.
+          </div>
+        </span>
+      </div>
       {/* Bulk Delete Button */}
       {selectedIds.length > 0 && (
         <div className="mb-4 flex items-center gap-4">
@@ -182,6 +241,9 @@ const AdminDashboard = () => {
                 <th className="px-4 py-3">Mobile</th>
                 <th className="px-4 py-3">Answered</th>
                 <th className="px-4 py-3">Unanswered</th>
+                <th className="px-4 py-3 font-bold text-blue-700 bg-blue-50">
+                  Test Mode (Per User)
+                </th>
                 <th className="px-4 py-3">Score</th>
                 <th className="px-4 py-3 text-green-700">Correct</th>
                 <th className="px-4 py-3 text-red-700">Wrong</th>
@@ -216,6 +278,10 @@ const AdminDashboard = () => {
                   <td className="px-4 py-2">{s.mobile}</td>
                   <td className="px-4 py-2">{s.answeredCount}</td>
                   <td className="px-4 py-2">{s.unansweredCount}</td>
+                  {/* Show per-user test mode from Firestore */}
+                  <td className="px-4 py-2 text-blue-700 font-semibold uppercase">
+                    {s.testModeAtStart || "-"}
+                  </td>
                   <td className="px-4 py-2 font-semibold">{s.score}</td>
                   <td className="px-4 py-2 text-green-600">{s.correctCount}</td>
                   <td className="px-4 py-2 text-red-600">{s.wrongCount}</td>
