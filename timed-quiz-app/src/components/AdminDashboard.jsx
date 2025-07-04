@@ -8,6 +8,7 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "../utils/firebase";
 import { questions } from "../data/questions";
 import { exportSubmissionsToExcel } from "../utils/exportToExcel";
+import { exportSubmissionsToPDF } from "../utils/exportToPDF";
 import AdminVisualizations from "./AdminVisualizations";
 import { doc, deleteDoc } from "firebase/firestore";
 
@@ -15,6 +16,10 @@ const AdminDashboard = () => {
   // Export to Excel handler (must be inside the component to access state)
   const handleExportToExcel = () => {
     exportSubmissionsToExcel(submissions);
+  };
+  // Export to PDF handler
+  const handleExportToPDF = () => {
+    exportSubmissionsToPDF(submissions);
   };
   // Test mode state (pre/post), loaded from Firestore
   const [testMode, setTestMode] = useState("post");
@@ -74,9 +79,7 @@ const AdminDashboard = () => {
     return () => unsubscribe();
   }, []);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  // Removed unused handlePrint (browser print) as export to PDF is now used
 
   const toggleSort = () => {
     if (!isSorted) {
@@ -237,10 +240,10 @@ const AdminDashboard = () => {
             {isSorted ? "Reset Order" : "Sort by Score & Time"}
           </button>
           <button
-            onClick={handlePrint}
+            onClick={handleExportToPDF}
             className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 print:hidden cursor-pointer"
           >
-            Download Results as PDF
+            Export to PDF
           </button>
           <button
             onClick={handleExportToExcel}
