@@ -88,18 +88,28 @@ const AdminVisualizations = ({ submissions, onClose }) => {
     : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex flex-col items-center py-10 px-2">
-      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center border-2 border-blue-200 relative">
-        <button
-          onClick={handleBack}
-          className="absolute top-4 left-4 text-gray-500 hover:text-gray-800 text-lg font-bold border border-gray-300 rounded px-4 py-1 bg-white cursor-pointer"
-        >
-          ← Back to Dashboard
-        </button>
-        <h2 className="text-3xl font-bold text-blue-800 mb-8 mt-2">
-          Quiz Data Visualizations
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 mb-10 w-full">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white flex flex-col items-center py-6 sm:py-10 px-1 sm:px-2">
+      <div className="w-full max-w-5xl bg-white rounded-2xl shadow-2xl p-2 sm:p-8 flex flex-col items-center border-2 border-blue-200 relative">
+        {/* Responsive Back Button: stack above heading on mobile */}
+        <div className="w-full flex flex-col sm:block">
+          <button
+            onClick={handleBack}
+            className="mb-4 sm:mb-0 sm:absolute sm:top-4 sm:left-4 text-gray-500 hover:text-gray-800 text-base sm:text-lg font-bold border border-gray-300 rounded px-4 py-2 bg-white cursor-pointer w-full sm:w-auto"
+          >
+            ← Back to Dashboard
+          </button>
+          <h2 className="text-2xl sm:text-3xl font-bold text-blue-800 mb-6 sm:mb-8 mt-2 text-center">
+            Quiz Data Visualizations
+          </h2>
+        </div>
+        {/* Mobile disclaimer */}
+        <div className="block sm:hidden w-full text-center mb-4">
+          <span className="text-red-600 font-semibold text-sm bg-red-50 px-3 py-2 rounded inline-block">
+            Note: For better viewing experience, open in desktop site mode or on
+            a desktop.
+          </span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8 mb-6 sm:mb-10 w-full">
           <div className="bg-blue-50 rounded-lg p-6 text-center">
             <div className="text-3xl font-bold text-blue-700">{total}</div>
             <div className="text-gray-700 mt-2">Total Submissions</div>
@@ -114,136 +124,180 @@ const AdminVisualizations = ({ submissions, onClose }) => {
           </div>
         </div>
         {/* Score Distribution */}
-        <div className="w-full mb-12">
+        <div className="w-full mb-8 sm:mb-12">
           <h3 className="font-semibold text-lg mb-4 text-blue-800">
             Score Distribution
           </h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart
-              data={scoreData}
-              margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
-            >
-              <XAxis
-                dataKey="score"
-                label={{
-                  value: "Score",
-                  position: "insideBottom",
-                  offset: -5,
-                  style: { fontWeight: "bold", fontSize: 16 },
-                }}
-                tick={{ fontWeight: "bold", fontSize: 14 }}
-              />
-              <YAxis
-                allowDecimals={false}
-                label={{
-                  value: "Users",
-                  angle: -90,
-                  position: "insideLeft",
-                  style: { fontWeight: "bold", fontSize: 16 },
-                }}
-                tick={{ fontWeight: "bold", fontSize: 14 }}
-              />
-              <Tooltip />
-              <Bar dataKey="count" fill="#8884d8" />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="w-full overflow-x-auto">
+            <ResponsiveContainer width="100%" height={250} minWidth={320}>
+              <BarChart
+                data={scoreData}
+                margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
+              >
+                <XAxis
+                  dataKey="score"
+                  label={{
+                    value: "Score",
+                    position: "insideBottom",
+                    offset: -5,
+                    style: { fontWeight: "bold", fontSize: 14 },
+                  }}
+                  tick={{ fontWeight: "bold", fontSize: 12 }}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  label={{
+                    value: "Users",
+                    angle: -90,
+                    position: "insideLeft",
+                    style: { fontWeight: "bold", fontSize: 14 },
+                  }}
+                  tick={{ fontWeight: "bold", fontSize: 12 }}
+                />
+                <Tooltip />
+                <Bar dataKey="count" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
         {/* Submissions Over Time */}
-        <div className="w-full mb-12">
+        <div className="w-full mb-8 sm:mb-12">
           <h3 className="font-semibold text-lg mb-4 text-green-800">
             Submissions Over Time (by Time Only)
           </h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart
-              data={timeData}
-              margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
-            >
-              <XAxis
-                dataKey="time"
-                label={{
-                  value: "Time (HH:mm)",
-                  position: "insideBottom",
-                  offset: -5,
-                  style: { fontWeight: "bold", fontSize: 16 },
-                }}
-                interval={0}
-                angle={-30}
-                textAnchor="end"
-                height={80}
-                tick={{ fontWeight: "bold", fontSize: 14 }}
-              />
-              <YAxis
-                allowDecimals={false}
-                label={{
-                  value: "Submissions",
-                  angle: -90,
-                  position: "insideLeft",
-                  style: {
-                    fontWeight: "bold",
-                    fontSize: 16,
-                    textAnchor: "middle",
-                    dominantBaseline: "middle",
-                  },
-                }}
-                tick={{ fontWeight: "bold", fontSize: 14 }}
-              />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="count"
-                stroke="#82ca9d"
-                strokeWidth={3}
-                dot={{ r: 4 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <div className="w-full overflow-x-auto">
+            <ResponsiveContainer width="100%" height={250} minWidth={320}>
+              <LineChart
+                data={timeData}
+                margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
+              >
+                <XAxis
+                  dataKey="time"
+                  label={{
+                    value: "Time (HH:mm)",
+                    position: "insideBottom",
+                    offset: -5,
+                    style: { fontWeight: "bold", fontSize: 14 },
+                  }}
+                  interval={0}
+                  angle={window.innerWidth < 640 ? -90 : -30}
+                  textAnchor={window.innerWidth < 640 ? "end" : "end"}
+                  height={window.innerWidth < 640 ? 120 : 80}
+                  tick={{ fontWeight: "bold", fontSize: 12 }}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  label={{
+                    value: "Submissions",
+                    angle: -90,
+                    position: "insideLeft",
+                    style: {
+                      fontWeight: "bold",
+                      fontSize: 14,
+                      textAnchor: "middle",
+                      dominantBaseline: "middle",
+                    },
+                  }}
+                  tick={{ fontWeight: "bold", fontSize: 12 }}
+                />
+                <Tooltip />
+                <Line
+                  type="monotone"
+                  dataKey="count"
+                  stroke="#82ca9d"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
         {/* Suspicious Activity */}
         <div className="w-full mb-4">
           <h3 className="font-semibold text-lg mb-4 text-red-800">
             Suspicious Activity (Tab Switches & Copy Attempts)
           </h3>
-          <ResponsiveContainer width="100%" height={320}>
-            <BarChart
-              data={suspiciousData}
-              margin={{ top: 10, right: 40, left: 0, bottom: 30 }}
-            >
-              <XAxis
-                dataKey="name"
-                interval={0}
-                angle={-30}
-                textAnchor="end"
-                height={80}
-                tick={{ fontWeight: "bold", fontSize: 14 }}
-                label={{
-                  value: "User",
-                  position: "insideBottom",
-                  offset: -5,
-                  style: { fontWeight: "bold", fontSize: 16 },
-                }}
-              />
-              <YAxis
-                allowDecimals={false}
-                tick={{ fontWeight: "bold", fontSize: 14 }}
-                label={{
-                  value: "Count",
-                  angle: -90,
-                  position: "insideLeft",
-                  style: { fontWeight: "bold", fontSize: 16 },
-                }}
-              />
-              <Tooltip />
-              <Legend
-                verticalAlign="top"
-                align="right"
-                wrapperStyle={{ top: 0, right: 0, fontWeight: "bold" }}
-                height={36}
-                iconSize={18}
-              />
-              <Bar dataKey="tabSwitches" fill="#8884d8" name="Tab Switches" />
-              <Bar dataKey="copyAttempts" fill="#ff8042" name="Copy Attempts" />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="w-full overflow-x-auto">
+            <ResponsiveContainer width="100%" height={320} minWidth={320}>
+              <BarChart
+                data={suspiciousData}
+                margin={{ top: 10, right: 40, left: 0, bottom: 30 }}
+              >
+                <XAxis
+                  dataKey="name"
+                  interval={0}
+                  angle={window.innerWidth < 640 ? -90 : -30}
+                  textAnchor={window.innerWidth < 640 ? "end" : "end"}
+                  height={window.innerWidth < 640 ? 120 : 80}
+                  tick={{ fontWeight: "bold", fontSize: 12 }}
+                  label={{
+                    value: "User",
+                    position: "insideBottom",
+                    offset: -5,
+                    style: { fontWeight: "bold", fontSize: 14 },
+                  }}
+                  tickFormatter={(name) =>
+                    window.innerWidth < 640 && name && name.length > 8
+                      ? name.slice(0, 8) + "…"
+                      : name
+                  }
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fontWeight: "bold", fontSize: 12 }}
+                  label={{
+                    value: "Count",
+                    angle: -90,
+                    position: "insideLeft",
+                    style: { fontWeight: "bold", fontSize: 14 },
+                  }}
+                />
+                <Tooltip
+                  formatter={(value, key, props) => {
+                    // Show full name in tooltip for axis
+                    if (props && props.payload && props.payload.name) {
+                      return [
+                        value,
+                        key === "tabSwitches"
+                          ? "Tab Switches"
+                          : key === "copyAttempts"
+                          ? "Copy Attempts"
+                          : key,
+                        true,
+                        props.payload.name,
+                      ];
+                    }
+                    return [value, key];
+                  }}
+                  labelFormatter={(label, payload) => {
+                    // Show full name as label in tooltip
+                    if (
+                      payload &&
+                      payload[0] &&
+                      payload[0].payload &&
+                      payload[0].payload.name
+                    ) {
+                      return payload[0].payload.name;
+                    }
+                    return label;
+                  }}
+                />
+                <Legend
+                  verticalAlign="top"
+                  align="right"
+                  wrapperStyle={{ top: 0, right: 0, fontWeight: "bold" }}
+                  height={36}
+                  iconSize={18}
+                />
+                <Bar dataKey="tabSwitches" fill="#8884d8" name="Tab Switches" />
+                <Bar
+                  dataKey="copyAttempts"
+                  fill="#ff8042"
+                  name="Copy Attempts"
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
     </div>

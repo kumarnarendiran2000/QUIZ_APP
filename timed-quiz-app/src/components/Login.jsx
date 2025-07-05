@@ -1,10 +1,16 @@
 // src/components/Login.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "../utils/firebase";
+import { getTestMode } from "../utils/quizSettings";
 
 const Login = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
+  const [testMode, setTestMode] = useState(null);
+
+  useEffect(() => {
+    getTestMode().then((mode) => setTestMode(mode));
+  }, []);
 
   const handleLogin = async () => {
     try {
@@ -77,9 +83,16 @@ const Login = ({ onLogin }) => {
             <strong>automatically submitted</strong>, even if unanswered.
           </li>
           <li>
-            At the end, your{" "}
-            <strong>score, time taken, and the correct answers</strong> will be
-            shown.
+            At the end, your <strong>score</strong>, <strong>time taken</strong>
+            , and the number of <strong>answered</strong> and{" "}
+            <strong>unanswered</strong> questions will be shown.
+            {testMode === "post" && (
+              <>
+                {" "}
+                You will also see all questions, your answers, and the correct
+                answers for each question.
+              </>
+            )}
           </li>
           <li>
             ✅ Once you're ready, click the button below to log in and begin!
