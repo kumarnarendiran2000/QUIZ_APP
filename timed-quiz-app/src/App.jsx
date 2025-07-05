@@ -1,5 +1,7 @@
 // src/App.jsx
 import React, { useEffect, useState } from "react";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { app } from "./utils/firebase";
 import Login from "./components/Login";
 import UserForm from "./components/UserForm";
 import QuizPage from "./components/QuizPage";
@@ -233,6 +235,40 @@ const App = () => {
 
       setDetailedResults(detailedResults);
       setQuizDuration(quizDuration);
+
+      // --- Send quiz result email via Firebase Function ---
+      try {
+        const functions = getFunctions(app);
+        const sendQuizResultEmail = httpsCallable(
+          functions,
+          "sendQuizResultEmail"
+        );
+        await sendQuizResultEmail({
+          email: user.email,
+          name: userInfo.name,
+          isPostTest: (testModeAtStart || testMode) === "post",
+          score: correctCount,
+          correct: correctCount,
+          wrong: questions.length - correctCount,
+          total: questions.length,
+          details: detailedResults.map((r, i) => ({
+            question: questions[i].question,
+            userAnswer:
+              typeof r.selected === "number"
+                ? questions[i].options[r.selected]
+                : "Unanswered",
+            correctAnswer:
+              typeof r.correct === "number"
+                ? questions[i].options[r.correct]
+                : "",
+            isCorrect: r.isCorrect,
+          })),
+        });
+      } catch (err) {
+        // Optionally log or show error, but do not block result page
+        console.error("Failed to send quiz result email:", err);
+      }
+      // --- End email trigger ---
     }
 
     setStep("result");
