@@ -40,22 +40,24 @@ const App = () => {
     return () => unsubscribe();
   }, []);
 
-  const ADMIN_EMAILS = [
-    "kumarnarendiran2211@gmail.com",
-    "kumargowtham1994@gmail.com",
-    "anesthesia@navodaya.edu.in",
-  ];
-
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
   // ✅ Step 1: Handle Login
   const handleLogin = async (loggedInUser) => {
-    if (ADMIN_EMAILS.includes(loggedInUser.email)) {
-      setUser(loggedInUser);
-      setStep("admin");
-      return;
+    // Check Firestore /admins/{uid} for admin status
+    try {
+      const adminRef = doc(db, "admins", loggedInUser.uid);
+      const adminSnap = await getDoc(adminRef);
+      if (adminSnap.exists()) {
+        setUser(loggedInUser);
+        setStep("admin");
+        return;
+      }
+    } catch (err) {
+      // Optionally log error, but do not block login
+      console.error("Error checking admin status:", err);
     }
 
     const ref = doc(db, "quiz_responses", loggedInUser.uid);
