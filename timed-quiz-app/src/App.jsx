@@ -238,11 +238,19 @@ const App = () => {
 
       // --- Send quiz result email via Firebase Function ---
       try {
-        const functions = getFunctions(app);
+        // Specify the region where your function is deployed (use 'us-central1' if unsure)
+        const functions = getFunctions(app, "us-central1");
+
+        // For local development with Firebase emulator, uncomment this line:
+        // connectFunctionsEmulator(functions, "localhost", 5001);
+
         const sendQuizResultEmail = httpsCallable(
           functions,
-          "sendQuizResultEmail"
+          "sendQuizResultEmail",
+          { timeout: 60000 } // Increase timeout to 60 seconds
         );
+
+        console.log("Calling sendQuizResultEmail function...");
         await sendQuizResultEmail({
           email: user.email,
           name: userInfo.name,
@@ -263,10 +271,17 @@ const App = () => {
                 : "",
             isCorrect: r.isCorrect,
           })),
+        }).then((result) => {
+          console.log("Email sent successfully:", result.data);
         });
       } catch (err) {
-        // Optionally log or show error, but do not block result page
-        console.error("Failed to send quiz result email:", err);
+        // Enhanced error logging with details to help diagnose the issue
+        console.error("Failed to send quiz result email:", {
+          message: err.message,
+          code: err.code,
+          details: err.details,
+          stack: err.stack,
+        });
       }
       // --- End email trigger ---
     }
