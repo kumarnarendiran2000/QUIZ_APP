@@ -10,7 +10,7 @@
 const functions = require("firebase-functions");
 const sgMail = require("@sendgrid/mail");
 
-const SENDGRID_API_KEY = functions.config().sendgrid.key;
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
 sgMail.setApiKey(SENDGRID_API_KEY);
 
 // Callable function to send quiz result email
