@@ -39,7 +39,9 @@ exports.sendQuizResultEmail = onCall(
         );
       }
 
-      const {
+
+      // Extract data from request
+      let {
         email,
         name,
         isPostTest,
@@ -53,18 +55,74 @@ exports.sendQuizResultEmail = onCall(
         quizDuration,
       } = request.data;
 
+      // If any of the user details are missing, fetch from Firestore
+      if (!email || !name || !regno || !mobile || !quizDuration) {
+        try {
+          const userDoc = await admin.firestore().collection("quiz_responses").doc(request.auth.uid).get();
+          if (userDoc.exists) {
+            const data = userDoc.data();
+            email = email || data.email || "";
+            name = name || data.name || "";
+            regno = regno || data.regno || "";
+            mobile = mobile || data.mobile || "";
+            quizDuration = quizDuration || data.quizDuration || "";
+          }
+        } catch (e) {
+          console.error("Failed to fetch user details from Firestore:", e);
+        }
+      }
+
       // Calculate answered and unanswered counts
-      const answeredCount = Array.isArray(details) ? details.filter(q => q.userAnswer !== null && q.userAnswer !== undefined).length : 0;
-      const unansweredCount = Array.isArray(details) ? details.length - answeredCount : 0;
+      // Ensure details is a full array of question objects in order, with question text, correct answer, user answer, etc.
+      // If details is missing question text, fetch from questions.js
+      let questionsList = [];
+      try {
+        // Dynamically import questions.js (Node.js require)
+        questionsList = require("../src/data/questions.js").questions;
+      } catch (e) {
+        console.error("Could not load questions.js for email details:", e);
+      }
+
+      // Build a normalized details array in order, with question text, correct answer, user answer, isCorrect
+      let normalizedDetails = [];
+      if (Array.isArray(details) && questionsList.length > 0) {
+        for (let i = 0; i < questionsList.length; i++) {
+          const qObj = questionsList[i];
+          const d = details[i] || {};
+          // userAnswer is index, correctAnswer is index
+          const userAnswerIdx = d.userAnswer;
+          const correctAnswerIdx = d.correctAnswer !== undefined ? d.correctAnswer : (qObj.correctAnswer !== undefined ? qObj.correctAnswer : undefined);
+          const userAnswerText = typeof userAnswerIdx === "number" && Array.isArray(qObj.options) ? qObj.options[userAnswerIdx] : null;
+          const correctAnswerText = typeof correctAnswerIdx === "number" && Array.isArray(qObj.options) ? qObj.options[correctAnswerIdx] : null;
+          normalizedDetails.push({
+            question: qObj.question,
+            userAnswer: userAnswerText,
+            correctAnswer: correctAnswerText,
+            isCorrect: d.isCorrect === true,
+            wasAnswered: typeof userAnswerIdx === "number"
+          });
+        }
+      } else if (Array.isArray(details)) {
+        // fallback: use details as-is
+        normalizedDetails = details;
+      }
+      const answeredCount = normalizedDetails.filter(q => q.wasAnswered).length;
+      const unansweredCount = normalizedDetails.length - answeredCount;
+
+
 
       // Construct the HTML body for the email.
       const testType = isPostTest ? "Post-Test" : "Pre-Test";
-      let html = `
-      <div style="background:#f6f8fa;padding:32px 0;font-family:Arial,sans-serif;">
+      let html = '';
+      html += `<div style="background:#f6f8fa;padding:32px 0;font-family:Arial,sans-serif;">
         <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:10px;box-shadow:0 2px 8px #e0e0e0;padding:32px 24px;">
           <div style="text-align:center;margin-bottom:24px;">
             <img src='https://dr-nk-bhat-skill-lab-test-app.pro/NET-Medical-College.png' alt='NET Medical College Logo' style='height:60px;margin-bottom:8px;' />
             <h2 style="margin:8px 0 0 0;color:#1a237e;font-size:1.6em;">Dr. NK Bhat Skill Lab Quiz Team</h2>
+          </div>
+          <div style="font-size:1.1em;margin-bottom:18px;">
+            <span style="font-size:1.1em;">Dear <b>${name || "Participant"}</b>,</span><br>
+            <span style="display:block;margin:10px 0 0 0;">Please find your quiz details below:</span>
           </div>
           <div style="font-size:1.1em;margin-bottom:18px;">
             <b>Name:</b> ${name || "-"}<br>
@@ -78,64 +136,52 @@ exports.sendQuizResultEmail = onCall(
             <b>Correct:</b> <span style="color:#388e3c;">${correct}</span> &nbsp; <b>Wrong:</b> <span style="color:#d32f2f;">${wrong}</span><br>
             <b>Answered:</b> <span style="color:#1976d2;">${answeredCount}</span> &nbsp; <b>Unanswered:</b> <span style="color:#757575;">${unansweredCount}</span><br>
             <b>Time Taken:</b> <span style="color:#1976d2;">${quizDuration || "-"}</span>
-          </div>
+          </div>`;
 
-      `;
-
-      if (isPostTest && Array.isArray(details) && details.length > 0) {
-        html += `<h3 style="color:#1a237e;margin-bottom:10px;">Question-wise Details:</h3><ol style="padding-left:20px;">`;
-        for (let i = 0; i < total; i++) {
-          // Defensive: if details[i] is missing, treat as unanswered
-          const q = details[i] || { question: `Question ${i + 1}`, userAnswer: null, correctAnswer: "-", isCorrect: false };
-          // Alternate row background for visual clarity
+      if (isPostTest && normalizedDetails.length > 0) {
+        html += '<h3 style="color:#1a237e;margin-bottom:10px;">Question-wise Details:</h3><ol style="padding-left:20px;">';
+        for (let i = 0; i < normalizedDetails.length; i++) {
+          const q = normalizedDetails[i];
           const rowBg = i % 2 === 0 ? '#f9fbe7' : '#fff';
-          html += `<li style="margin-bottom:18px;line-height:1.6;background:${rowBg};padding:12px 10px;border-radius:8px;box-shadow:0 1px 2px #ececec;">
-            <div style="font-weight:bold;color:#283593;">Q${i + 1}: ${q.question}</div>`;
-
-          if (q.userAnswer === null || q.userAnswer === undefined) {
-            html += `
-              <div><b>Status:</b> <span style='color:#ffa000;'>⚪ Unanswered</span></div>
-              <div><b>Your Answer:</b> <span style='color:#757575;'>Unanswered</span></div>
-              <div><b>Correct Answer:</b> <span style='color:#1565c0;'>${q.correctAnswer}</span></div>
-            `;
+          html += '<li style="margin-bottom:18px;line-height:1.6;background:' + rowBg + ';padding:12px 10px;border-radius:8px;box-shadow:0 1px 2px #ececec;">';
+          html += '<div style="font-weight:bold;color:#283593;">Q' + (i + 1) + ': ' + (q.question || '-') + '</div>';
+          if (!q.wasAnswered) {
+            html += '<div><b>Status:</b> <span style="color:#ffa000;">⚪ Unanswered</span></div>';
+            html += '<div><b>Your Answer:</b> <span style="color:#757575;">Unanswered</span></div>';
+            html += '<div><b>Correct Answer:</b> <span style="color:#1565c0;">' + (q.correctAnswer || '-') + '</span></div>';
           } else if (q.isCorrect) {
-            html += `
-              <div><b>Status:</b> <span style='color:#388e3c;'>🟢 Answered</span></div>
-              <div><b>Your Answer:</b> <span style='color:#388e3c;'>${q.userAnswer}</span></div>
-              <div style='color:#388e3c;font-weight:bold;'>✅ Correct</div>
-            `;
+            html += '<div><b>Status:</b> <span style="color:#388e3c;">🟢 Answered</span></div>';
+            html += '<div><b>Your Answer:</b> <span style="color:#388e3c;">' + (q.userAnswer || '-') + '</span></div>';
+            html += '<div style="color:#388e3c;font-weight:bold;">✅ Correct</div>';
           } else {
-            html += `
-              <div><b>Status:</b> <span style='color:#d32f2f;'>🟠 Answered</span></div>
-              <div><b>Your Answer:</b> <span style='color:#d32f2f;'>${q.userAnswer}</span></div>
-              <div><b>Correct Answer:</b> <span style='color:#1565c0;'>${q.correctAnswer}</span></div>
-              <div style='color:#d32f2f;font-weight:bold;'>❌ Wrong</div>
-            `;
+            html += '<div><b>Status:</b> <span style="color:#d32f2f;">🟠 Answered</span></div>';
+            html += '<div><b>Your Answer:</b> <span style="color:#d32f2f;">' + (q.userAnswer || '-') + '</span></div>';
+            html += '<div><b>Correct Answer:</b> <span style="color:#1565c0;">' + (q.correctAnswer || '-') + '</span></div>';
+            html += '<div style="color:#d32f2f;font-weight:bold;">❌ Wrong</div>';
           }
-          html += "</li>";
+          html += '</li>';
         }
-        html += "</ol>";
+        html += '</ol>';
       }
 
-      html += `
-          <p style="margin-top:32px;font-size:1.1em;">Best regards,<br/><b>Dr. NK Bhat Skill Lab Quiz Team</b></p>
-        </div>
-      </div>
-      `;
+      html += '<p style="margin-top:32px;font-size:1.1em;">Best regards,<br/><b>Dr. NK Bhat Skill Lab Quiz Team</b></p>';
+      html += '</div>';
+      html += '</div>';
 
       // Create a plain-text version of the email for better deliverability.
-      const text = `
-Dear ${name || "Participant"},
-
-Thank you for taking the quiz.
-
-Test Type: ${testType}
-Your Score: ${score} / ${total}
-Correct: ${correct} | Wrong: ${wrong}
-
-Best regards,
-Dr. NK Bhat Skill Lab Quiz Team
-      `;
+      let text = '';
+      text += 'Dear ' + (name || 'Participant') + ',\n\n';
+      text += 'Please find your quiz details below:\n\n';
+      text += 'Name: ' + (name || '-') + '\n';
+      text += 'Registration Number: ' + (regno || '-') + '\n';
+      text += 'Mobile: ' + (mobile || '-') + '\n';
+      text += 'Email: ' + (email || '-') + '\n';
+      text += 'Test Type: ' + testType + '\n';
+      text += 'Your Score: ' + score + ' / ' + total + '\n';
+      text += 'Correct: ' + correct + ' | Wrong: ' + wrong + '\n';
+      text += 'Answered: ' + answeredCount + ' | Unanswered: ' + unansweredCount + '\n';
+      text += 'Time Taken: ' + (quizDuration || '-') + '\n\n';
+      text += 'Best regards,\nDr. NK Bhat Skill Lab Quiz Team\n';
 
       const msg = {
         to: email,
@@ -143,17 +189,17 @@ Dr. NK Bhat Skill Lab Quiz Team
           name: "Dr. NK Bhat Skill Lab Quiz Team",
           email: "noreply@dr-nk-bhat-skill-lab-test-app.pro",
         },
-        subject: `Your ${testType} Quiz Results (${new Date().toLocaleString()})`,
+        subject: 'Your ' + testType + ' Quiz Results (' + new Date().toLocaleString() + ')',
         html: html,
         text: text, // Add the plain-text version.
       };
 
       try {
         await sgMail.send(msg);
-        console.log(`Email sent successfully to ${email}`);
+        console.log('Email sent successfully to ' + email);
         return {success: true};
       } catch (error) {
-        console.error(`Failed to send email to ${email}:`, error.toString());
+        console.error('Failed to send email to ' + email + ':', error.toString());
         // For more detailed error logging, you can inspect error.response.body
         if (error.response) {
           console.error(error.response.body);
