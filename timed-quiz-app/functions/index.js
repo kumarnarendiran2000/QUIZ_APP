@@ -85,26 +85,28 @@ exports.sendQuizResultEmail = onCall(
       if (isPostTest && Array.isArray(details) && details.length > 0) {
         html += `<h3 style="color:#1a237e;margin-bottom:10px;">Question-wise Details:</h3><ol style="padding-left:20px;">`;
         for (let i = 0; i < total; i++) {
-          const q = details[i];
-          html += `<li style="margin-bottom:18px;line-height:1.6;">
+          // Defensive: if details[i] is missing, treat as unanswered
+          const q = details[i] || { question: `Question ${i + 1}`, userAnswer: null, correctAnswer: "-", isCorrect: false };
+          // Alternate row background for visual clarity
+          const rowBg = i % 2 === 0 ? '#f9fbe7' : '#fff';
+          html += `<li style="margin-bottom:18px;line-height:1.6;background:${rowBg};padding:12px 10px;border-radius:8px;box-shadow:0 1px 2px #ececec;">
             <div style="font-weight:bold;color:#283593;">Q${i + 1}: ${q.question}</div>`;
 
           if (q.userAnswer === null || q.userAnswer === undefined) {
             html += `
-              <div><b>Status:</b> <span style='color:#757575;'>Unanswered</span></div>
+              <div><b>Status:</b> <span style='color:#ffa000;'>⚪ Unanswered</span></div>
               <div><b>Your Answer:</b> <span style='color:#757575;'>Unanswered</span></div>
               <div><b>Correct Answer:</b> <span style='color:#1565c0;'>${q.correctAnswer}</span></div>
-              <div style='color:#757575;font-weight:bold;'>⚪ Unanswered</div>
             `;
           } else if (q.isCorrect) {
             html += `
-              <div><b>Status:</b> <span style='color:#388e3c;'>Answered</span></div>
+              <div><b>Status:</b> <span style='color:#388e3c;'>🟢 Answered</span></div>
               <div><b>Your Answer:</b> <span style='color:#388e3c;'>${q.userAnswer}</span></div>
               <div style='color:#388e3c;font-weight:bold;'>✅ Correct</div>
             `;
           } else {
             html += `
-              <div><b>Status:</b> <span style='color:#d32f2f;'>Answered</span></div>
+              <div><b>Status:</b> <span style='color:#d32f2f;'>🟠 Answered</span></div>
               <div><b>Your Answer:</b> <span style='color:#d32f2f;'>${q.userAnswer}</span></div>
               <div><b>Correct Answer:</b> <span style='color:#1565c0;'>${q.correctAnswer}</span></div>
               <div style='color:#d32f2f;font-weight:bold;'>❌ Wrong</div>
