@@ -169,50 +169,91 @@ const ResultPage = ({
           {emailError}
         </div>
       )}
-      <h2 className="text-3xl font-bold mb-4 text-gray-800 border-b pb-2">
-        🎯 Your Quiz Results
+      <h2 className="text-3xl font-bold mb-6 text-gray-800 border-b pb-3 text-center bg-gray-50 p-4 rounded-lg shadow-sm">
+        🎯 Your Quiz Results {testMode === "pre" ? "(Pre-Test)" : "(Post-Test)"}
       </h2>
-      <div className="mb-4 space-y-1 text-lg text-gray-700">
-        <p>
-          <strong>Name:</strong> {userInfo.name}
-        </p>
-        <p>
-          <strong>Registration Number:</strong> {userInfo.regno}
-        </p>
-        <p>
-          <strong>Mobile:</strong> {userInfo.mobile}
-        </p>
-        <p>
-          <strong>Email:</strong> {userEmail}
-        </p>
-        <p>
-          <strong>Score:</strong> {correct} / {questions.length} &nbsp;|&nbsp;
-          ✅ Correct:{" "}
-          <span className="text-green-600 font-semibold">{correct}</span>{" "}
-          &nbsp;|&nbsp; ❌ Wrong:{" "}
-          <span className="text-red-600 font-semibold">{wrong}</span>
-        </p>
-        <p>
-          🟦 Answered: <strong>{answeredCount}</strong> &nbsp;|&nbsp; ⬜
-          Unanswered: <strong>{unansweredCount}</strong>
-        </p>
-        <p>
-          ⏱️ <strong>Time Taken:</strong> {quizDuration}
-        </p>
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-5 rounded-lg border border-gray-200">
+        <div className="space-y-2">
+          <p className="text-lg">
+            <strong className="text-indigo-700">Name:</strong> {userInfo.name}
+          </p>
+          <p className="text-lg">
+            <strong className="text-indigo-700">Registration Number:</strong>{" "}
+            {userInfo.regno}
+          </p>
+          <p className="text-lg">
+            <strong className="text-indigo-700">Mobile:</strong>{" "}
+            {userInfo.mobile}
+          </p>
+          <p className="text-lg">
+            <strong className="text-indigo-700">Email:</strong> {userEmail}
+          </p>
+        </div>
+
+        <div className="space-y-3 border-t md:border-t-0 md:border-l border-gray-200 pt-3 md:pt-0 md:pl-6">
+          <p className="text-lg font-medium">
+            <strong className="text-indigo-700">Score:</strong>{" "}
+            <span className="text-xl font-bold">
+              {correct} / {questions.length}
+            </span>
+          </p>
+          <p>
+            <span className="inline-block bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+              ✅ Correct: {correct}
+            </span>{" "}
+            <span className="inline-block bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm font-medium">
+              ❌ Wrong: {wrong}
+            </span>
+          </p>
+          <p>
+            <span className="inline-block bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-medium">
+              🟦 Answered: {answeredCount}
+            </span>{" "}
+            <span className="inline-block bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
+              ⬜ Unanswered: {unansweredCount}
+            </span>
+          </p>
+          <p className="text-lg">
+            <strong className="text-indigo-700">⏱️ Time Taken:</strong>{" "}
+            {quizDuration}
+          </p>
+        </div>
       </div>
 
       {/* Conditional rendering based on testMode */}
       {testMode === "pre" ? (
-        <div className="mt-8 text-center text-xl text-blue-800 font-semibold">
-          Thank you for attending the test. Your responses have been recorded.
-          <br />
-          Please contact your instructor for further feedback.
+        <div className="mt-8 text-center p-6 bg-blue-50 rounded-lg border border-blue-200">
+          <h3 className="text-2xl font-bold text-blue-800 mb-4">Thank You!</h3>
+          <p className="text-xl text-blue-700">
+            Thank you for attending the pre-test quiz. Your responses have been
+            recorded.
+          </p>
+          <p className="text-lg text-blue-600 mt-2">
+            Please stay in touch with your instructor for further details.
+          </p>
+          <p className="text-lg font-semibold text-blue-700 mt-4">
+            We look forward to seeing you in the post-test!
+          </p>
         </div>
       ) : (
         <div className="mt-6 space-y-10">
+          <div className="mb-8 text-center p-6 bg-green-50 rounded-lg border border-green-200">
+            <h3 className="text-2xl font-bold text-green-800 mb-3">
+              Thank You!
+            </h3>
+            <p className="text-xl text-green-700">
+              Thank you for attending the post-test quiz. Your responses have
+              been recorded.
+            </p>
+            <p className="text-lg text-green-600 mt-3">
+              Please find the question-wise details of your quiz below for
+              reference.
+            </p>
+          </div>
+
           {questionsByTopic.map(({ topic, questions: topicQuestions }) => (
             <div key={topic}>
-              <h3 className="text-2xl font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2 uppercase tracking-wide">
+              <h3 className="text-2xl font-bold text-blue-700 mb-4 border-b-2 border-blue-200 pb-2 uppercase tracking-wide bg-blue-50 p-3 rounded-t-lg shadow-sm">
                 {topic}
               </h3>
               <div className="space-y-5">
