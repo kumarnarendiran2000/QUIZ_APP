@@ -29,6 +29,7 @@ export function exportSubmissionsToExcel(submissions) {
     { header: "Completed At", key: "completedAt" },
     { header: "Tab Switches", key: "tabSwitchCount" },
     { header: "Copy Attempts", key: "copyAttemptCount" },
+    { header: "Email Sent", key: "emailSent" },
   ];
 
   // Prepare data rows
@@ -48,6 +49,7 @@ export function exportSubmissionsToExcel(submissions) {
     completedAt: s.completedAt ? new Date(s.completedAt).toLocaleString() : "N/A",
     tabSwitchCount: typeof s.tabSwitchCount === "number" ? s.tabSwitchCount : 0,
     copyAttemptCount: typeof s.copyAttemptCount === "number" ? s.copyAttemptCount : 0,
+    emailSent: s.emailSent === true ? "Yes" : "No",
   }));
 
   // Create worksheet and workbook

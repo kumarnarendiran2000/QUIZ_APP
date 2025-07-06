@@ -309,6 +309,9 @@ const AdminDashboard = () => {
                   <th className="px-4 py-3">Completed At</th>
                   <th className="px-4 py-3">Tab Switches</th>
                   <th className="px-4 py-3">Copy Attempts</th>
+                  <th className="px-4 py-3 font-bold text-purple-700 bg-purple-50">
+                    Email Sent
+                  </th>
                   <th className="px-4 py-3 print:hidden">Action</th>
                   <th className="px-4 py-3 print:hidden">Delete</th>
                 </tr>
@@ -361,6 +364,17 @@ const AdminDashboard = () => {
                         ? s.copyAttemptCount
                         : 0}
                     </td>
+                    <td className="px-4 py-2 text-center">
+                      <span
+                        className={`font-medium px-3 py-1 rounded-full text-sm ${
+                          s.emailSent
+                            ? "bg-green-100 text-green-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}
+                      >
+                        {s.emailSent ? "Yes" : "No"}
+                      </span>
+                    </td>
                     <td className="px-4 py-2 print:hidden">
                       <button
                         onClick={() => setViewing(s)}
@@ -403,6 +417,23 @@ const AdminDashboard = () => {
               🟦 Answered: <strong>{viewing.answeredCount}</strong>{" "}
               &nbsp;|&nbsp; ⬜ Unanswered:{" "}
               <strong>{viewing.unansweredCount}</strong>
+            </p>
+            <p className="text-gray-700 mb-4">
+              📧 Email Status:{" "}
+              <span
+                className={`font-semibold px-3 py-1 rounded-lg ${
+                  viewing.emailSent
+                    ? "bg-green-100 text-green-800"
+                    : "bg-yellow-100 text-yellow-800"
+                }`}
+              >
+                {viewing.emailSent ? "Sent ✓" : "Not Sent"}
+              </span>
+              {viewing.emailSentAt && (
+                <span className="text-xs ml-2 text-gray-500">
+                  ({new Date(viewing.emailSentAt.toDate()).toLocaleString()})
+                </span>
+              )}
             </p>
 
             {viewing.detailedResults?.map((r, index) => {

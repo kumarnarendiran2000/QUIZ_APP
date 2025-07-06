@@ -23,6 +23,7 @@ export function exportSubmissionsToPDF(submissions) {
     { header: "Completed\nAt", dataKey: "completedAt" },
     { header: "Tab\nSwitches", dataKey: "tabSwitchCount" },
     { header: "Copy\nAttempts", dataKey: "copyAttemptCount" },
+    { header: "Email\nSent", dataKey: "emailSent" },
   ];
 
   // Prepare table rows
@@ -42,6 +43,7 @@ export function exportSubmissionsToPDF(submissions) {
     completedAt: s.completedAt ? new Date(s.completedAt).toLocaleString() : "",
     tabSwitchCount: s.tabSwitchCount ?? 0,
     copyAttemptCount: s.copyAttemptCount ?? 0,
+    emailSent: s.emailSent === true ? "Yes" : "No",
   }));
 
   doc.setFontSize(18);
@@ -65,6 +67,7 @@ export function exportSubmissionsToPDF(submissions) {
       completedAt: { cellWidth: 38 },
       tabSwitchCount: { cellWidth: 24 },
       copyAttemptCount: { cellWidth: 24 },
+      emailSent: { cellWidth: 24 },
     },
     didDrawPage: (data) => {
       doc.setFontSize(10);

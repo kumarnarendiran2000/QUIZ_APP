@@ -228,29 +228,88 @@ exports.sendQuizResultEmail = onCall(
       let html = '';
       html += `<div style="background:#f0f3fa;padding:32px 0;font-family:'Segoe UI',Arial,sans-serif;">
         <div style="max-width:650px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:36px 28px;">
-          <div style="text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #e8eaf6;">
-            <img src='https://dr-nk-bhat-skill-lab-test-app.pro/NET-Medical-College.png' alt='NET Medical College Logo' style='height:70px;margin-bottom:12px;' />
+          <div style="text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #e8eaf6;background:#f8f9ff;border-radius:10px;padding:20px;">
+            <img src='https://dr-nk-bhat-skill-lab-test-app.pro/NET-Medical-College.png' alt='NET Medical College Logo' style='height:75px;margin-bottom:12px;' />
             <h2 style="margin:8px 0 0 0;color:#1a237e;font-size:1.8em;font-weight:700;">Dr. NK Bhat Skill Lab Quiz Team</h2>
+            <p style="margin-top:10px;color:#555;font-style:italic;font-size:1.1em;">${testType} Quiz Results</p>
           </div>
-          <div style="font-size:1.25em;margin-bottom:22px;line-height:1.4;">
+          <div style="font-size:1.25em;margin-bottom:22px;line-height:1.4;text-align:center;">
             <span style="font-size:1.2em;">Dear <b>${name || "Participant"}</b>,</span><br>
             <span style="display:block;margin:12px 0 0 0;color:#444;font-style:italic;">Please find your quiz details below:</span>
           </div>
-          <div style="font-size:1.2em;margin-bottom:22px;line-height:1.6;background:#f9faff;padding:16px;border-left:4px solid #7986cb;border-radius:6px;">
-            <b style="color:#303f9f;">Name:</b> ${name || "-"}<br>
-            <b style="color:#303f9f;">Registration Number:</b> ${regno || "-"}<br>
-            <b style="color:#303f9f;">Mobile:</b> ${mobile || "-"}<br>
-            <b style="color:#303f9f;">Email:</b> ${email || "-"}<br>
-          </div>
-          <div style="background:linear-gradient(to right, #f0f4c3, #e8f5e9);padding:20px 22px;border-radius:10px;margin:24px 0 28px 0;box-shadow:0 2px 8px rgba(0,0,0,0.05);font-size:1.2em;line-height:1.8;">
-            <b style="color:#1a237e;font-size:1.1em;">Test Type:</b> <span style="color:#1565c0;font-weight:bold;">${testType}</span><br>
-            <b style="color:#1a237e;font-size:1.1em;">Your Score:</b> <span style="color:#2e7d32;font-weight:bold;font-size:1.2em;">${score} / ${total}</span><br>
-            <b style="color:#1a237e;">Correct:</b> <span style="color:#2e7d32;font-weight:bold;">${correct}</span> &nbsp; <b style="color:#1a237e;">Wrong:</b> <span style="color:#c62828;font-weight:bold;">${wrong}</span><br>
-            <b style="color:#1a237e;">Answered:</b> <span style="color:#0d47a1;font-weight:bold;">${answeredCount}</span> &nbsp; <b style="color:#1a237e;">Unanswered:</b> <span style="color:#424242;font-weight:bold;">${unansweredCount}</span><br>
-            <b style="color:#1a237e;">Time Taken:</b> <span style="color:#0d47a1;font-weight:bold;">${quizDuration || "-"}</span>
+          
+          <!-- Two-column container for user info and scores -->
+          <div style="margin-bottom:28px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,0.1);overflow:hidden;">
+            <!-- Header for the results panel -->
+            <div style="background:#f0f4fa;text-align:center;padding:12px;border-bottom:2px solid #e8eaf6;">
+              <span style="font-size:1.3em;font-weight:600;color:#1a237e;">Quiz Results - ${testType}</span>
+            </div>
+            
+            <!-- Two-column layout -->
+            <div style="display:table;width:100%;table-layout:fixed;background:#fff;">
+              <!-- Left column: Personal details -->
+              <div style="display:table-cell;width:50%;padding:20px;vertical-align:top;font-size:1.15em;line-height:1.7;border-right:1px solid #e8eaf6;">
+                <div style="margin-bottom:8px;">
+                  <span style="color:#303f9f;font-weight:600;">Name:</span> 
+                  <span>${name || "-"}</span>
+                </div>
+                <div style="margin-bottom:8px;">
+                  <span style="color:#303f9f;font-weight:600;">Registration Number:</span> 
+                  <span>${regno || "-"}</span>
+                </div>
+                <div style="margin-bottom:8px;">
+                  <span style="color:#303f9f;font-weight:600;">Mobile:</span> 
+                  <span>${mobile || "-"}</span>
+                </div>
+                <div style="margin-bottom:8px;">
+                  <span style="color:#303f9f;font-weight:600;">Email:</span> 
+                  <span>${email || "-"}</span>
+                </div>
+              </div>
+              
+              <!-- Right column: Scores -->
+              <div style="display:table-cell;width:50%;padding:20px;vertical-align:top;font-size:1.15em;line-height:1.7;background:#fafbff;">
+                <div style="margin-bottom:10px;">
+                  <span style="color:#1a237e;font-weight:600;">Score:</span> 
+                  <span style="font-size:1.2em;font-weight:700;color:#2e7d32;">${score} / ${total}</span>
+                </div>
+                
+                <div style="margin-bottom:10px;">
+                  <span style="display:inline-block;background:#e8f5e9;padding:4px 10px;border-radius:15px;margin-right:5px;">
+                    <span style="color:#2e7d32;font-weight:600;">✅ Correct:</span> ${correct}
+                  </span>
+                  
+                  <span style="display:inline-block;background:#ffebee;padding:4px 10px;border-radius:15px;">
+                    <span style="color:#c62828;font-weight:600;">❌ Wrong:</span> ${wrong}
+                  </span>
+                </div>
+                
+                <div style="margin-bottom:10px;">
+                  <span style="display:inline-block;background:#e3f2fd;padding:4px 10px;border-radius:15px;margin-right:5px;">
+                    <span style="color:#0d47a1;font-weight:600;">🟦 Answered:</span> ${answeredCount}
+                  </span>
+                  
+                  <span style="display:inline-block;background:#f5f5f5;padding:4px 10px;border-radius:15px;">
+                    <span style="color:#424242;font-weight:600;">⬜ Unanswered:</span> ${unansweredCount}
+                  </span>
+                </div>
+                
+                <div>
+                  <span style="color:#1a237e;font-weight:600;">⏱️ Time Taken:</span> 
+                  <span style="color:#0d47a1;">${quizDuration || "-"}</span>
+                </div>
+              </div>
+            </div>
           </div>`;
 
       if (isPostTest && normalizedDetails.length > 0) {
+        // Add a thank you message before the question details, similar to frontend
+        html += `<div style="margin:28px 0;padding:20px;text-align:center;background:#e8f5e9;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.05);border:1px solid #c8e6c9;">
+          <h3 style="font-size:1.6em;color:#2e7d32;margin-bottom:10px;font-weight:bold;">Thank You!</h3>
+          <p style="font-size:1.2em;color:#33691e;margin-bottom:8px;">Thank you for attending the post-test quiz. Your responses have been recorded.</p>
+          <p style="font-size:1.1em;color:#558b2f;font-style:italic;">Please find the question-wise details of your quiz below for reference.</p>
+        </div>`;
+        
         html += '<h3 style="color:#1a237e;margin-bottom:16px;font-size:1.4em;text-align:center;border-bottom:2px dashed #c5cae9;padding-bottom:10px;">Question-wise Details</h3><ol style="padding-left:20px;">';
         
         // Group questions by topic for better organization
@@ -270,7 +329,17 @@ exports.sendQuizResultEmail = onCall(
           
           questionsByTopic[topic].forEach(q => {
             const i = q.index;
-            const rowBg = i % 2 === 0 ? '#f9fbe7' : '#ffffff';
+            
+            // Set background color based on answer status (matches ResultPage.jsx)
+            let rowBg = '#ffffff';
+            if (!q.wasAnswered) {
+              rowBg = '#fff9c4'; // Yellow background for unanswered (similar to yellow-50)
+            } else if (q.isCorrect) {
+              rowBg = '#e8f5e9'; // Green background for correct (green-50)
+            } else {
+              rowBg = '#ffebee'; // Red background for wrong answers (red-50)
+            }
+            
             html += '<li style="margin-bottom:22px;line-height:1.7;background:' + rowBg + ';padding:16px 14px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.08);font-size:1.1em;">';
             html += '<div style="font-weight:bold;color:#283593;font-size:1.1em;margin-bottom:8px;border-bottom:1px solid #e0e0e0;padding-bottom:6px;">Q' + (i + 1) + ': ' + (q.question || '-') + '</div>';
             
@@ -296,18 +365,19 @@ exports.sendQuizResultEmail = onCall(
         html += '<div style="margin-top:28px;font-size:1.2em;color:#333;text-align:center;font-style:italic;background:#f5f5f5;padding:16px;border-radius:8px;">Thank you for attending the quiz!</div>';
       } else {
         // This is a pre-test
-        html += '<div style="margin-top:28px;font-size:1.2em;color:#333;text-align:center;background:linear-gradient(to right, #e8f5e9, #e3f2fd);padding:20px;border-radius:10px;line-height:1.6;">';
-        html += '<span style="font-weight:600;color:#1a237e;font-size:1.1em;display:block;margin-bottom:10px;">Thank you for completing the pre-test quiz!</span>';
-        html += 'Your responses have been recorded successfully.<br>Please stay in touch with your instructor for further details.<br>';
-        html += '<span style="font-style:italic;color:#0d47a1;display:block;margin-top:10px;">We look forward to seeing you in the post-test!</span>';
-        html += '</div>';
+        html += `<div style="margin:28px 0;padding:24px;text-align:center;background:#e3f2fd;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);border:1px solid #bbdefb;">
+          <h3 style="font-size:1.6em;color:#0d47a1;margin-bottom:12px;font-weight:bold;">Thank You!</h3>
+          <p style="font-size:1.2em;color:#1565c0;margin-bottom:10px;">Thank you for attending the pre-test quiz. Your responses have been recorded successfully.</p>
+          <p style="font-size:1.1em;color:#1976d2;margin-bottom:10px;">Please stay in touch with your instructor for further details.</p>
+          <p style="font-size:1.2em;color:#0d47a1;font-weight:500;font-style:italic;margin-top:12px;">We look forward to seeing you in the post-test!</p>
+        </div>`;
       }
 
       html += '<div style="margin-top:36px;border-top:1px solid #e0e0e0;padding-top:20px;text-align:center;">';
       html += '<p style="font-size:1.2em;color:#333;margin-bottom:5px;">Best regards,</p>';
       html += '<p style="font-size:1.3em;font-weight:bold;color:#1a237e;margin-top:5px;">Dr. NK Bhat Skill Lab Quiz Team</p>';
       html += '</div>';
-      html += '<div style="margin-top:16px;font-size:0.95em;color:#777;text-align:center;font-style:italic;">[final v5]</div>';
+      html += '<div style="margin-top:16px;font-size:0.95em;color:#777;text-align:center;font-style:italic;">[final v7]</div>';
       html += '</div>';
       html += '</div>';
 
@@ -368,7 +438,7 @@ exports.sendQuizResultEmail = onCall(
             totalQuestions: normalizedDetails.length,
             answeredCount,
             unansweredCount,
-            emailVersion: "final v5",
+            emailVersion: "final v7",
             dataSource: frontendDetailedResults?.length > 0 ? "frontend" : "firestore",
             emailSent: true
           }
