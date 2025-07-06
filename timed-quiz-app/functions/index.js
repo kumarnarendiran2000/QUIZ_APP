@@ -53,35 +53,85 @@ exports.sendQuizResultEmail = onCall(
       console.log(`Preparing email for ${email} (User: ${name}).`);
 
       // Construct the HTML body for the email.
+      const testType = isPostTest ? "Post-Test" : "Pre-Test";
       let html = `
-        <p>Dear ${name || "Participant"},</p>
-        <p>Thank you for taking the quiz.</p>
-        <p>
-          <b>Your Score:</b> ${score} / ${total}<br>
-          <b>Correct:</b> ${correct} &nbsp; <b>Wrong:</b> ${wrong}
-        </p>`;
+      <div style="background:#f6f8fa;padding:32px 0;font-family:Arial,sans-serif;">
+        <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:10px;box-shadow:0 2px 8px #e0e0e0;padding:32px 24px;">
+          <div style="text-align:center;margin-bottom:24px;">
+            <img src='https://dr-nk-bhat-skill-lab-test-app.pro/NET-Medical-College.png' alt='NET Medical College Logo' style='height:60px;margin-bottom:8px;' />
+            <h2 style="margin:8px 0 0 0;color:#1a237e;font-size:1.6em;">Dr. NK Bhat Skill Lab Quiz Team</h2>
+          </div>
+          <p style="font-size:1.1em;">Dear <b>${name || "Participant"}</b>,</p>
+          <p style="font-size:1.1em;">Thank you for taking the quiz.</p>
+          <div style="background:#f0f4c3;padding:16px 20px;border-radius:8px;margin:18px 0 24px 0;">
+            <b>Test Type:</b> <span style="color:#1565c0;">${testType}</span><br>
+            <b>Your Score:</b> <span style="color:#388e3c;">${score} / ${total}</span><br>
+            <b>Correct:</b> <span style="color:#388e3c;">${correct}</span> &nbsp; <b>Wrong:</b> <span style="color:#d32f2f;">${wrong}</span>
+          </div>
+
+      `;
 
       if (isPostTest && details && details.length > 0) {
-        html += "<h3>Question-wise Details:</h3><ol>";
+        html += `<h3 style="color:#1a237e;margin-bottom:10px;">Question-wise Details:</h3><ol style="padding-left:20px;">`;
         details.forEach((q, i) => {
-          html += `
-            <li>
-              <b>Q${i + 1}:</b> ${q.question}<br>
-              <b>Your Answer:</b> ${q.userAnswer || "Not answered"}<br>
-              <b>Correct Answer:</b> ${q.correctAnswer}<br>
-              <b>${q.isCorrect ? "✅ Correct" : "❌ Wrong"}</b>
-            </li>`;
+          html += `<li style="margin-bottom:18px;line-height:1.6;">
+            <div style="font-weight:bold;color:#283593;">Q${i + 1}: ${q.question}</div>`;
+
+          if (q.userAnswer === null || q.userAnswer === undefined) {
+            // Case: Unanswered
+            html += `
+              <div><b>Your Answer:</b> <span style='color:#757575;'>Unanswered</span></div>
+              <div><b>Correct Answer:</b> <span style='color:#1565c0;'>${q.correctAnswer}</span></div>
+              <div style='color:#757575;font-weight:bold;'>⚪ Unanswered</div>
+            `;
+          } else if (q.isCorrect) {
+            // Case: Correct
+            html += `
+              <div><b>Your Answer:</b> <span style='color:#388e3c;'>${q.userAnswer}</span></div>
+              <div style='color:#388e3c;font-weight:bold;'>✅ Correct</div>
+            `;
+          } else {
+            // Case: Wrong
+            html += `
+              <div><b>Your Answer:</b> <span style='color:#d32f2f;'>${q.userAnswer}</span></div>
+              <div><b>Correct Answer:</b> <span style='color:#1565c0;'>${q.correctAnswer}</span></div>
+              <div style='color:#d32f2f;font-weight:bold;'>❌ Wrong</div>
+            `;
+          }
+          html += "</li>";
         });
         html += "</ol>";
       }
 
-      html += "<p>Best regards,<br/>The Quiz Team</p>";
+      html += `
+          <p style="margin-top:32px;font-size:1.1em;">Best regards,<br/><b>Dr. NK Bhat Skill Lab Quiz Team</b></p>
+        </div>
+      </div>
+      `;
+
+      // Create a plain-text version of the email for better deliverability.
+      const text = `
+Dear ${name || "Participant"},
+
+Thank you for taking the quiz.
+
+Test Type: ${testType}
+Your Score: ${score} / ${total}
+Correct: ${correct} | Wrong: ${wrong}
+
+Best regards,
+Dr. NK Bhat Skill Lab Quiz Team
+      `;
 
       const msg = {
         to: email,
-        from: "noreply@dr-nk-bhat-skill-lab-test-app.pro",
-        subject: "Your Quiz Results",
+        from: {
+          name: "Dr. NK Bhat Skill Lab Quiz Team",
+          email: "noreply@dr-nk-bhat-skill-lab-test-app.pro",
+        },
+        subject: `Your ${testType} Quiz Results (${new Date().toLocaleString()})`,
         html: html,
+        text: text, // Add the plain-text version.
       };
 
       try {
