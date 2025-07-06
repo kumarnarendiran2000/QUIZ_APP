@@ -352,7 +352,15 @@ exports.sendQuizResultEmail = onCall(
         // Log normalized details count for debugging
         console.log(`Sending email with ${normalizedDetails.length} questions (${answeredCount} answered, ${unansweredCount} unanswered)`);
         
+        // Send the email
         await sgMail.send(msg);
+        
+        // Update Firestore to mark that email has been sent for this attempt
+        await admin.firestore().collection("quiz_responses").doc(request.auth.uid).update({
+          emailSent: true,
+          emailSentAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+        
         console.log('Email sent successfully to ' + email);
         return {
           success: true, 
@@ -361,7 +369,8 @@ exports.sendQuizResultEmail = onCall(
             answeredCount,
             unansweredCount,
             emailVersion: "final v5",
-            dataSource: frontendDetailedResults?.length > 0 ? "frontend" : "firestore"
+            dataSource: frontendDetailedResults?.length > 0 ? "frontend" : "firestore",
+            emailSent: true
           }
         };
       } catch (error) {

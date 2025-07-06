@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { questions } from "../data/questions";
 import { doc, getDoc } from "firebase/firestore";
-import { db, sendQuizResultEmail } from "../utils/firebase";
+import { db, sendQuizResultEmail, auth } from "../utils/firebase";
 
 const ResultPage = ({
   userInfo,
@@ -21,20 +21,36 @@ const ResultPage = ({
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
   const [emailError, setEmailError] = useState("");
+  const [emailAlreadySent, setEmailAlreadySent] = useState(false);
 
   useEffect(() => {
-    const fetchCorrectAnswers = async () => {
+    const fetchData = async () => {
       try {
-        const ref = doc(db, "quiz_metadata", "default");
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          setCorrectAnswers(snap.data().correctAnswers);
+        // Fetch correct answers
+        const metadataRef = doc(db, "quiz_metadata", "default");
+        const metadataSnap = await getDoc(metadataRef);
+        
+        if (metadataSnap.exists()) {
+          setCorrectAnswers(metadataSnap.data().correctAnswers);
         } else {
           setFetchError(
             "Quiz metadata not found. Please contact the administrator."
           );
+          return;
         }
-      } catch {
+        
+        // Check if email has already been sent for this user
+        if (auth.currentUser) {
+          const userRef = doc(db, "quiz_responses", auth.currentUser.uid);
+          const userSnap = await getDoc(userRef);
+          
+          if (userSnap.exists() && userSnap.data().emailSent === true) {
+            console.log("Email was already sent previously. Skipping email send.");
+            setEmailAlreadySent(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
         setFetchError(
           "Failed to load quiz metadata. Please check your connection or try again later."
         );
@@ -42,7 +58,8 @@ const ResultPage = ({
         setLoading(false); // Done loading
       }
     };
-    fetchCorrectAnswers();
+    
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -82,6 +99,9 @@ const ResultPage = ({
           score: correct,
         });
         console.log("Email sent successfully:", result);
+        
+        // Mark email as sent locally to prevent duplicate sending in this session
+        setEmailAlreadySent(true);
       } catch (error) {
         console.error("Email sending error:", error);
         setEmailError(
@@ -90,13 +110,14 @@ const ResultPage = ({
       }
     };
 
-    // Only send email when results are ready
+    // Only send email when results are ready AND email hasn't been sent before
     if (
       (testMode === "post" || testMode === "pre") &&
       detailedResults &&
       detailedResults.length > 0 &&
       !loading &&
-      correctAnswers.length > 0
+      correctAnswers.length > 0 &&
+      !emailAlreadySent
     ) {
       sendEmail();
     }
@@ -109,6 +130,7 @@ const ResultPage = ({
     quizDuration,
     correct,
     wrong,
+    emailAlreadySent
   ]);
 
   if (loading) {
