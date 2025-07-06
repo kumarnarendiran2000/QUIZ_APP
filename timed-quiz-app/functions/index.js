@@ -16,7 +16,7 @@ admin.initializeApp();
 if (!process.env.SENDGRID_API_KEY) {
   console.error("FATAL ERROR: SENDGRID_API_KEY is not set.");
 }
-// sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 /**
  * Sends a quiz result email to a user.
@@ -77,11 +77,11 @@ exports.sendQuizResultEmail = onCall(
           total = data.total !== undefined ? data.total : (Array.isArray(data.answers) ? data.answers.length : 0);
           details = data.detailedResults || data.details || [];
         } else {
-          throw new functions.https.HttpsError("not-found", "Quiz response not found in Firestore.");
+          throw new functions.https.HttpsError("not-found", "Test response not found in Firestore.");
         }
       } catch (e) {
-        console.error("Failed to fetch quiz response from Firestore:", e);
-        throw new functions.https.HttpsError("internal", "Failed to fetch quiz response from Firestore.");
+        console.error("Failed to fetch test response from Firestore:", e);
+        throw new functions.https.HttpsError("internal", "Failed to fetch test response from Firestore.");
       }
 
       // Calculate answered and unanswered counts
@@ -230,19 +230,19 @@ exports.sendQuizResultEmail = onCall(
         <div style="max-width:650px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:36px 28px;">
           <div style="text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #e8eaf6;background:#f8f9ff;border-radius:10px;padding:20px;">
             <img src='https://dr-nk-bhat-skill-lab-test-app.pro/NET-Medical-College.png' alt='NET Medical College Logo' style='height:75px;margin-bottom:12px;' />
-            <h2 style="margin:8px 0 0 0;color:#1a237e;font-size:1.8em;font-weight:700;">Dr. NK Bhat Skill Lab Quiz Team</h2>
-            <p style="margin-top:10px;color:#555;font-style:italic;font-size:1.1em;">${testType} Quiz Results</p>
+            <h2 style="margin:8px 0 0 0;color:#1a237e;font-size:1.8em;font-weight:700;">Dr. NK Bhat Skill Lab Team</h2>
+            <p style="margin-top:10px;color:#555;font-style:italic;font-size:1.1em;">${testType} Results</p>
           </div>
           <div style="font-size:1.25em;margin-bottom:22px;line-height:1.4;text-align:center;">
             <span style="font-size:1.2em;">Dear <b>${name || "Participant"}</b>,</span><br>
-            <span style="display:block;margin:12px 0 0 0;color:#444;font-style:italic;">Please find your quiz details below:</span>
+            <span style="display:block;margin:12px 0 0 0;color:#444;font-style:italic;">Please find your test details below:</span>
           </div>
           
           <!-- Two-column container for user info and scores -->
           <div style="margin-bottom:28px;border-radius:12px;box-shadow:0 3px 10px rgba(0,0,0,0.1);overflow:hidden;">
             <!-- Header for the results panel -->
             <div style="background:#f0f4fa;text-align:center;padding:12px;border-bottom:2px solid #e8eaf6;">
-              <span style="font-size:1.3em;font-weight:600;color:#1a237e;">Quiz Results - ${testType}</span>
+              <span style="font-size:1.3em;font-weight:600;color:#1a237e;">Results - ${testType}</span>
             </div>
             
             <!-- Two-column layout with mobile responsiveness -->
@@ -323,8 +323,8 @@ exports.sendQuizResultEmail = onCall(
         // Add a thank you message before the question details, similar to frontend (with mobile-friendly font sizes)
         html += `<div style="margin:28px 0;padding:20px;text-align:center;background:#e8f5e9;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.05);border:1px solid #c8e6c9;">
           <h3 style="font-size:1.6em;color:#2e7d32;margin-bottom:10px;font-weight:bold;">Thank You!</h3>
-          <p style="font-size:1.2em;color:#33691e;margin-bottom:8px;">Thank you for attending the post-test quiz. Your responses have been recorded.</p>
-          <p style="font-size:1.1em;color:#558b2f;font-style:italic;">Please find the question-wise details of your quiz below for reference.</p>
+          <p style="font-size:1.2em;color:#33691e;margin-bottom:8px;">Thank you for attending the post-test. Your responses have been recorded.</p>
+          <p style="font-size:1.1em;color:#558b2f;font-style:italic;">Please find the question-wise details of your test below for reference.</p>
         </div>`;
         
         html += '<h3 style="color:#1a237e;margin-bottom:16px;font-size:1.4em;text-align:center;border-bottom:2px dashed #c5cae9;padding-bottom:10px;">Question-wise Details</h3><ol style="padding-left:20px;">';
@@ -379,12 +379,12 @@ exports.sendQuizResultEmail = onCall(
         });
         
         html += '</ol>';
-        html += '<div style="margin-top:28px;font-size:1.2em;color:#333;text-align:center;font-style:italic;background:#f5f5f5;padding:16px;border-radius:8px;">Thank you for attending the quiz!</div>';
+        html += '<div style="margin-top:28px;font-size:1.2em;color:#333;text-align:center;font-style:italic;background:#f5f5f5;padding:16px;border-radius:8px;">Thank you for attending the test!</div>';
       } else {
         // This is a pre-test
         html += `<div style="margin:28px 0;padding:24px;text-align:center;background:#e3f2fd;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.08);border:1px solid #bbdefb;">
           <h3 style="font-size:1.6em;color:#0d47a1;margin-bottom:12px;font-weight:bold;">Thank You!</h3>
-          <p style="font-size:1.2em;color:#1565c0;margin-bottom:10px;">Thank you for attending the pre-test quiz. Your responses have been recorded successfully.</p>
+          <p style="font-size:1.2em;color:#1565c0;margin-bottom:10px;">Thank you for attending the pre-test. Your responses have been recorded successfully.</p>
           <p style="font-size:1.1em;color:#1976d2;margin-bottom:10px;">Please stay in touch with your instructor for further details.</p>
           <p style="font-size:1.2em;color:#0d47a1;font-weight:500;font-style:italic;margin-top:12px;">We look forward to seeing you in the post-test!</p>
         </div>`;
@@ -392,7 +392,7 @@ exports.sendQuizResultEmail = onCall(
 
       html += '<div style="margin-top:36px;border-top:1px solid #e0e0e0;padding-top:20px;text-align:center;">';
       html += '<p style="font-size:1.2em;color:#333;margin-bottom:5px;">Best regards,</p>';
-      html += '<p style="font-size:1.3em;font-weight:bold;color:#1a237e;margin-top:5px;">Dr. NK Bhat Skill Lab Quiz Team</p>';
+      html += '<p style="font-size:1.3em;font-weight:bold;color:#1a237e;margin-top:5px;">Dr. NK Bhat Skill Lab Team</p>';
       html += '</div>';
       html += '<div style="margin-top:16px;font-size:0.95em;color:#777;text-align:center;font-style:italic;">[final v8 mobile-optimized]</div>';
       html += '</div>';
@@ -403,7 +403,7 @@ exports.sendQuizResultEmail = onCall(
       // Create a plain-text version of the email for better deliverability.
       let text = '';
       text += 'Dear ' + (name || 'Participant') + ',\n\n';
-      text += 'Please find your quiz details below:\n\n';
+      text += 'Please find your test details below:\n\n';
       text += 'Name: ' + (name || '-') + '\n';
       text += 'Registration Number: ' + (regno || '-') + '\n';
       text += 'Mobile: ' + (mobile || '-') + '\n';
@@ -413,7 +413,7 @@ exports.sendQuizResultEmail = onCall(
       text += 'Correct: ' + correct + ' | Wrong: ' + wrong + '\n';
       text += 'Answered: ' + answeredCount + ' | Unanswered: ' + unansweredCount + '\n';
       text += 'Time Taken: ' + (quizDuration || '-') + '\n\n';
-      text += 'Best regards,\nDr. NK Bhat Skill Lab Quiz Team\n';
+      text += 'Best regards,\nDr. NK Bhat Skill Lab Team\n';
 
       // Format the date in IST (Asia/Kolkata)
       const istDate = new Date().toLocaleString('en-IN', {
@@ -429,10 +429,10 @@ exports.sendQuizResultEmail = onCall(
       const msg = {
         to: email,
         from: {
-          name: "Dr. NK Bhat Skill Lab Quiz Team",
+          name: "Dr. NK Bhat Skill Lab Team",
           email: "noreply@dr-nk-bhat-skill-lab-test-app.pro",
         },
-        subject: 'Your ' + testType + ' Quiz Results (' + istDate + ' IST)',
+        subject: 'Your ' + testType + ' Results (' + istDate + ' IST)',
         html: html,
         text: text, // Add the plain-text version.
       };
