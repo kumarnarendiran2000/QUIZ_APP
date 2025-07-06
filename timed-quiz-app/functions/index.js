@@ -88,23 +88,30 @@ exports.sendQuizResultEmail = onCall(
       if (Array.isArray(details) && questionsList.length > 0) {
         for (let i = 0; i < questionsList.length; i++) {
           const qObj = questionsList[i];
-          const d = details[i] || {};
+          // Find the user's answer for this question (by question index)
+          const d = Array.isArray(details) && details[i] ? details[i] : {};
           // userAnswer is index, correctAnswer is index
-          const userAnswerIdx = d.userAnswer;
-          const correctAnswerIdx = d.correctAnswer !== undefined ? d.correctAnswer : (qObj.correctAnswer !== undefined ? qObj.correctAnswer : undefined);
-          const userAnswerText = typeof userAnswerIdx === "number" && Array.isArray(qObj.options) ? qObj.options[userAnswerIdx] : null;
-          const correctAnswerText = typeof correctAnswerIdx === "number" && Array.isArray(qObj.options) ? qObj.options[correctAnswerIdx] : null;
+          const userAnswerIdx = typeof d.userAnswer === 'number' ? d.userAnswer : null;
+          const correctAnswerIdx = typeof d.correctAnswer === 'number' ? d.correctAnswer : (typeof qObj.correctAnswer === 'number' ? qObj.correctAnswer : null);
+          const userAnswerText = (userAnswerIdx !== null && Array.isArray(qObj.options)) ? qObj.options[userAnswerIdx] : null;
+          const correctAnswerText = (correctAnswerIdx !== null && Array.isArray(qObj.options)) ? qObj.options[correctAnswerIdx] : null;
           normalizedDetails.push({
             question: qObj.question,
             userAnswer: userAnswerText,
             correctAnswer: correctAnswerText,
             isCorrect: d.isCorrect === true,
-            wasAnswered: typeof userAnswerIdx === "number"
+            wasAnswered: userAnswerIdx !== null
           });
         }
       } else if (Array.isArray(details)) {
         // fallback: use details as-is
-        normalizedDetails = details;
+        normalizedDetails = details.map(q => ({
+          question: q.question || '-',
+          userAnswer: q.userAnswer || null,
+          correctAnswer: q.correctAnswer || null,
+          isCorrect: q.isCorrect === true,
+          wasAnswered: q.userAnswer !== null && q.userAnswer !== undefined
+        }));
       }
       const answeredCount = normalizedDetails.filter(q => q.wasAnswered).length;
       const unansweredCount = normalizedDetails.length - answeredCount;
