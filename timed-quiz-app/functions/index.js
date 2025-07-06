@@ -48,9 +48,14 @@ exports.sendQuizResultEmail = onCall(
         wrong,
         total,
         details,
+        regno,
+        mobile,
+        quizDuration,
       } = request.data;
 
-      console.log(`Preparing email for ${email} (User: ${name}).`);
+      // Calculate answered and unanswered counts
+      const answeredCount = Array.isArray(details) ? details.filter(q => q.userAnswer !== null && q.userAnswer !== undefined).length : 0;
+      const unansweredCount = Array.isArray(details) ? details.length - answeredCount : 0;
 
       // Construct the HTML body for the email.
       const testType = isPostTest ? "Post-Test" : "Pre-Test";
@@ -61,45 +66,52 @@ exports.sendQuizResultEmail = onCall(
             <img src='https://dr-nk-bhat-skill-lab-test-app.pro/NET-Medical-College.png' alt='NET Medical College Logo' style='height:60px;margin-bottom:8px;' />
             <h2 style="margin:8px 0 0 0;color:#1a237e;font-size:1.6em;">Dr. NK Bhat Skill Lab Quiz Team</h2>
           </div>
-          <p style="font-size:1.1em;">Dear <b>${name || "Participant"}</b>,</p>
-          <p style="font-size:1.1em;">Thank you for taking the quiz.</p>
+          <div style="font-size:1.1em;margin-bottom:18px;">
+            <b>Name:</b> ${name || "-"}<br>
+            <b>Registration Number:</b> ${regno || "-"}<br>
+            <b>Mobile:</b> ${mobile || "-"}<br>
+            <b>Email:</b> ${email || "-"}<br>
+          </div>
           <div style="background:#f0f4c3;padding:16px 20px;border-radius:8px;margin:18px 0 24px 0;">
             <b>Test Type:</b> <span style="color:#1565c0;">${testType}</span><br>
             <b>Your Score:</b> <span style="color:#388e3c;">${score} / ${total}</span><br>
-            <b>Correct:</b> <span style="color:#388e3c;">${correct}</span> &nbsp; <b>Wrong:</b> <span style="color:#d32f2f;">${wrong}</span>
+            <b>Correct:</b> <span style="color:#388e3c;">${correct}</span> &nbsp; <b>Wrong:</b> <span style="color:#d32f2f;">${wrong}</span><br>
+            <b>Answered:</b> <span style="color:#1976d2;">${answeredCount}</span> &nbsp; <b>Unanswered:</b> <span style="color:#757575;">${unansweredCount}</span><br>
+            <b>Time Taken:</b> <span style="color:#1976d2;">${quizDuration || "-"}</span>
           </div>
 
       `;
 
-      if (isPostTest && details && details.length > 0) {
+      if (isPostTest && Array.isArray(details) && details.length > 0) {
         html += `<h3 style="color:#1a237e;margin-bottom:10px;">Question-wise Details:</h3><ol style="padding-left:20px;">`;
-        details.forEach((q, i) => {
+        for (let i = 0; i < total; i++) {
+          const q = details[i];
           html += `<li style="margin-bottom:18px;line-height:1.6;">
             <div style="font-weight:bold;color:#283593;">Q${i + 1}: ${q.question}</div>`;
 
           if (q.userAnswer === null || q.userAnswer === undefined) {
-            // Case: Unanswered
             html += `
+              <div><b>Status:</b> <span style='color:#757575;'>Unanswered</span></div>
               <div><b>Your Answer:</b> <span style='color:#757575;'>Unanswered</span></div>
               <div><b>Correct Answer:</b> <span style='color:#1565c0;'>${q.correctAnswer}</span></div>
               <div style='color:#757575;font-weight:bold;'>⚪ Unanswered</div>
             `;
           } else if (q.isCorrect) {
-            // Case: Correct
             html += `
+              <div><b>Status:</b> <span style='color:#388e3c;'>Answered</span></div>
               <div><b>Your Answer:</b> <span style='color:#388e3c;'>${q.userAnswer}</span></div>
               <div style='color:#388e3c;font-weight:bold;'>✅ Correct</div>
             `;
           } else {
-            // Case: Wrong
             html += `
+              <div><b>Status:</b> <span style='color:#d32f2f;'>Answered</span></div>
               <div><b>Your Answer:</b> <span style='color:#d32f2f;'>${q.userAnswer}</span></div>
               <div><b>Correct Answer:</b> <span style='color:#1565c0;'>${q.correctAnswer}</span></div>
               <div style='color:#d32f2f;font-weight:bold;'>❌ Wrong</div>
             `;
           }
           html += "</li>";
-        });
+        }
         html += "</ol>";
       }
 
