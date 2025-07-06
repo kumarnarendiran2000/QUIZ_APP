@@ -22,6 +22,9 @@ const ResultPage = ({
   const [fetchError, setFetchError] = useState("");
   const [emailError, setEmailError] = useState("");
   const [emailAlreadySent, setEmailAlreadySent] = useState(false);
+  const [showToast, setShowToast] = useState(false);
+  const [toastType, setToastType] = useState("info"); // 'success' | 'error' | 'info'
+  const [toastMsg, setToastMsg] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -68,15 +71,15 @@ const ResultPage = ({
     // Send email for both pre and post test after results are loaded
     const sendEmail = async () => {
       try {
-        console.log("Sending quiz result email with frontend data...");
-
-        // Create normalized detailed results to match backend's expected format
+        setShowToast(true);
+        setToastType("info");
+        setToastMsg("Please wait, sending your test results to your email...");
+        console.log("Preparing to send test result email...");
         const normalizedResults = questions.map((q, i) => {
           const selected = answers[i];
           const correct = correctAnswers[i];
           const isCorrect = selected === correct;
           const wasAnswered = typeof selected === "number";
-
           return {
             question: q.question,
             userAnswer: wasAnswered ? q.options[selected] : null,
@@ -86,9 +89,8 @@ const ResultPage = ({
             topic: q.topic || "Other",
           };
         });
-
-        // Pass data to backend function
-        const result = await sendQuizResultEmail({
+        console.log("Normalized results for email:", normalizedResults);
+        await sendQuizResultEmail({
           answers,
           detailedResults: normalizedResults,
           correctAnswers,
@@ -100,18 +102,30 @@ const ResultPage = ({
           total: questions.length,
           score: correct,
         });
-        console.log("Email sent successfully:", result);
-
-        // Mark email as sent locally to prevent duplicate sending in this session
+        console.log("Quiz result email sent successfully.");
+        // Wait 5 seconds to allow backend to update flag
+        setTimeout(() => {
+          setShowToast(true);
+          setToastType("success");
+          setToastMsg(
+            "Success! Your test results have been emailed to you. Please check your inbox (or spam folder in rare case)."
+          );
+        }, 5000);
         setEmailAlreadySent(true);
       } catch (error) {
         console.error("Email sending error:", error);
+        setTimeout(() => {
+          setShowToast(true);
+          setToastType("error");
+          setToastMsg(
+            "Oops! We couldn’t send your test results email due to a temporary issue. Please refresh and re-login to try again. The email will be retriggered automatically when you relogin and you will land on this page."
+          );
+        }, 5000);
         setEmailError(
-          "Failed to send quiz result email. Please check your connection or try again later."
+          "Failed to send test result email. Please check your connection or try again later."
         );
       }
     };
-
     // Only send email when results are ready AND email hasn't been sent before
     if (
       (testMode === "post" || testMode === "pre") &&
@@ -163,7 +177,38 @@ const ResultPage = ({
   }));
 
   return (
-    <div className="max-w-5xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
+    <div className="max-w-5xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm relative">
+      {/* Toast notification */}
+      {showToast && (
+        <div
+          className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-4 rounded-lg shadow-lg text-lg font-semibold transition-all duration-300 flex items-center justify-between gap-4
+            ${
+              toastType === "success"
+                ? "bg-green-600 text-white"
+                : toastType === "error"
+                ? "bg-red-600 text-white"
+                : "bg-blue-600 text-white"
+            }
+          `}
+          style={{ minWidth: 280, maxWidth: 400 }}
+        >
+          <span className="flex-1">{toastMsg}</span>
+          <button
+            aria-label="Close notification"
+            className="ml-4 text-white text-2xl font-bold focus:outline-none hover:opacity-80"
+            style={{
+              lineHeight: 1,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+            }}
+            onClick={() => setShowToast(false)}
+          >
+            &times;
+          </button>
+        </div>
+      )}
+      {/* ...existing code... */}
       {emailError && (
         <div className="mb-4 text-center text-red-600 font-semibold">
           {emailError}
