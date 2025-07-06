@@ -79,27 +79,46 @@ exports.sendQuizResultEmail = onCall(
       // Build a normalized details array in order, with question text, correct answer, user answer, isCorrect, wasAnswered
       // Map user answers to questions by question index, so all questions (answered or not) are included in order
       let normalizedDetails = [];
-      if (Array.isArray(details) && questionsList.length > 0) {
-        // Build a map of answered question indices for fast lookup
-        const answerMap = {};
-        for (let i = 0; i < details.length; i++) {
-          // If details[i] has a questionIndex property, use it; else assume order matches
-          const idx = typeof details[i].questionIndex === 'number' ? details[i].questionIndex : i;
-          answerMap[idx] = details[i];
+      
+      // Fetch user answers directly from Firestore document - critical for including unanswered questions
+      let userAnswers = [];
+      try {
+        const userData = await admin.firestore().collection("quiz_responses").doc(request.auth.uid).get();
+        if (userData.exists) {
+          userAnswers = userData.data().answers || [];
         }
+      } catch (e) {
+        console.error("Failed to fetch user answers from Firestore:", e);
+      }
+      
+      // Try to get correctAnswers from metadata
+      let correctAnswers = [];
+      try {
+        const metaDoc = await admin.firestore().collection("quiz_metadata").doc("default").get();
+        if (metaDoc.exists) {
+          correctAnswers = metaDoc.data().correctAnswers || [];
+        }
+      } catch (e) {
+        console.error("Failed to fetch correct answers from Firestore:", e);
+      }
+      
+      if (questionsList.length > 0) {
+        // Process all questions in order, whether answered or not
         for (let i = 0; i < questionsList.length; i++) {
           const qObj = questionsList[i];
-          const d = answerMap[i] || {};
-          const userAnswerIdx = typeof d.userAnswer === 'number' ? d.userAnswer : null;
-          const correctAnswerIdx = typeof d.correctAnswer === 'number' ? d.correctAnswer : (typeof qObj.correctAnswer === 'number' ? qObj.correctAnswer : null);
+          const userAnswerIdx = i < userAnswers.length ? userAnswers[i] : null;
+          const correctAnswerIdx = i < correctAnswers.length ? correctAnswers[i] : (typeof qObj.correctAnswer === 'number' ? qObj.correctAnswer : null);
+          
           const userAnswerText = (userAnswerIdx !== null && Array.isArray(qObj.options)) ? qObj.options[userAnswerIdx] : null;
           const correctAnswerText = (correctAnswerIdx !== null && Array.isArray(qObj.options)) ? qObj.options[correctAnswerIdx] : null;
+          
           let isCorrect = false;
           if (userAnswerIdx !== null && correctAnswerIdx !== null) {
             isCorrect = userAnswerIdx === correctAnswerIdx;
           }
+          
           normalizedDetails.push({
-            question: qObj.question,
+            question: qObj.question || '-',
             userAnswer: userAnswerText,
             correctAnswer: correctAnswerText,
             isCorrect,
@@ -107,7 +126,7 @@ exports.sendQuizResultEmail = onCall(
           });
         }
       } else if (Array.isArray(details)) {
-        // fallback: use details as-is
+        // Fallback: use details as-is, but ensure we include indicators for unanswered questions
         normalizedDetails = details.map(q => ({
           question: q.question || '-',
           userAnswer: q.userAnswer || null,
@@ -150,27 +169,46 @@ exports.sendQuizResultEmail = onCall(
 
       if (isPostTest && normalizedDetails.length > 0) {
         html += '<h3 style="color:#1a237e;margin-bottom:10px;">Question-wise Details:</h3><ol style="padding-left:20px;">';
+        
+        // Group questions by topic for better organization
+        const questionsByTopic = {};
         for (let i = 0; i < normalizedDetails.length; i++) {
           const q = normalizedDetails[i];
-          const rowBg = i % 2 === 0 ? '#f9fbe7' : '#fff';
-          html += '<li style="margin-bottom:18px;line-height:1.6;background:' + rowBg + ';padding:12px 10px;border-radius:8px;box-shadow:0 1px 2px #ececec;">';
-          html += '<div style="font-weight:bold;color:#283593;">Q' + (i + 1) + ': ' + (q.question || '-') + '</div>';
-          if (!q.wasAnswered) {
-            html += '<div><b>Status:</b> <span style="color:#ffa000;">⚪ Unanswered</span></div>';
-            html += '<div><b>Your Answer:</b> <span style="color:#757575;">Unanswered</span></div>';
-            html += '<div><b>Correct Answer:</b> <span style="color:#1565c0;">' + (q.correctAnswer || '-') + '</span></div>';
-          } else if (q.isCorrect) {
-            html += '<div><b>Status:</b> <span style="color:#388e3c;">🟢 Answered</span></div>';
-            html += '<div><b>Your Answer:</b> <span style="color:#388e3c;">' + (q.userAnswer || '-') + '</span></div>';
-            html += '<div style="color:#388e3c;font-weight:bold;">✅ Correct</div>';
-          } else {
-            html += '<div><b>Status:</b> <span style="color:#d32f2f;">🟠 Answered</span></div>';
-            html += '<div><b>Your Answer:</b> <span style="color:#d32f2f;">' + (q.userAnswer || '-') + '</span></div>';
-            html += '<div><b>Correct Answer:</b> <span style="color:#1565c0;">' + (q.correctAnswer || '-') + '</span></div>';
-            html += '<div style="color:#d32f2f;font-weight:bold;">❌ Wrong</div>';
+          const topic = (questionsList[i] && questionsList[i].topic) || 'Other';
+          if (!questionsByTopic[topic]) {
+            questionsByTopic[topic] = [];
           }
-          html += '</li>';
+          questionsByTopic[topic].push({...q, index: i});
         }
+        
+        // Output questions by topic
+        Object.keys(questionsByTopic).forEach(topic => {
+          html += `<div style="margin:16px 0 10px 0;background:#e8eaf6;padding:8px 12px;border-radius:5px;font-weight:bold;color:#1a237e;">${topic}</div>`;
+          
+          questionsByTopic[topic].forEach(q => {
+            const i = q.index;
+            const rowBg = i % 2 === 0 ? '#f9fbe7' : '#fff';
+            html += '<li style="margin-bottom:18px;line-height:1.6;background:' + rowBg + ';padding:12px 10px;border-radius:8px;box-shadow:0 1px 2px #ececec;">';
+            html += '<div style="font-weight:bold;color:#283593;">Q' + (i + 1) + ': ' + (q.question || '-') + '</div>';
+            
+            if (!q.wasAnswered) {
+              html += '<div><b>Status:</b> <span style="color:#ffa000;">⚪ Unanswered</span></div>';
+              html += '<div><b>Your Answer:</b> <span style="color:#757575;">Unanswered</span></div>';
+              html += '<div><b>Correct Answer:</b> <span style="color:#1565c0;">' + (q.correctAnswer || '-') + '</span></div>';
+            } else if (q.isCorrect) {
+              html += '<div><b>Status:</b> <span style="color:#388e3c;">🟢 Answered</span></div>';
+              html += '<div><b>Your Answer:</b> <span style="color:#388e3c;">' + (q.userAnswer || '-') + '</span></div>';
+              html += '<div style="color:#388e3c;font-weight:bold;">✅ Correct</div>';
+            } else {
+              html += '<div><b>Status:</b> <span style="color:#d32f2f;">🟠 Answered</span></div>';
+              html += '<div><b>Your Answer:</b> <span style="color:#d32f2f;">' + (q.userAnswer || '-') + '</span></div>';
+              html += '<div><b>Correct Answer:</b> <span style="color:#1565c0;">' + (q.correctAnswer || '-') + '</span></div>';
+              html += '<div style="color:#d32f2f;font-weight:bold;">❌ Wrong</div>';
+            }
+            html += '</li>';
+          });
+        });
+        
         html += '</ol>';
         html += '<div style="margin-top:24px;font-size:1.1em;color:#333;">Thank you for attending the quiz.</div>';
       } else if (!isPostTest) {
@@ -178,7 +216,7 @@ exports.sendQuizResultEmail = onCall(
       }
 
       html += '<p style="margin-top:32px;font-size:1.1em;">Best regards,<br/><b>Dr. NK Bhat Skill Lab Quiz Team</b></p>';
-      html += '<div style="margin-top:12px;font-size:0.95em;color:#888;">[final v1]</div>';
+      html += '<div style="margin-top:12px;font-size:0.95em;color:#888;">[final v2]</div>';
       html += '</div>';
       html += '</div>';
 
@@ -220,9 +258,20 @@ exports.sendQuizResultEmail = onCall(
       };
 
       try {
+        // Log normalized details count for debugging
+        console.log(`Sending email with ${normalizedDetails.length} questions (${answeredCount} answered, ${unansweredCount} unanswered)`);
+        
         await sgMail.send(msg);
         console.log('Email sent successfully to ' + email);
-        return {success: true};
+        return {
+          success: true, 
+          details: {
+            totalQuestions: normalizedDetails.length,
+            answeredCount,
+            unansweredCount,
+            emailVersion: "final v2"
+          }
+        };
       } catch (error) {
         console.error('Failed to send email to ' + email + ':', error.toString());
         // For more detailed error logging, you can inspect error.response.body
@@ -232,7 +281,14 @@ exports.sendQuizResultEmail = onCall(
         throw new functions.https.HttpsError(
             "internal",
             "An error occurred while trying to send the email.",
-            {originalError: error.message},
+            {
+              originalError: error.message,
+              details: {
+                totalQuestions: normalizedDetails.length,
+                answeredCount,
+                unansweredCount
+              }
+            },
         );
       }
     },

@@ -49,22 +49,28 @@ const ResultPage = ({
     // Send email for both pre and post test after results are loaded
     const sendEmail = async () => {
       try {
-        await sendQuizResultEmail(); // Backend handles content based on testMode
-      } catch {
+        console.log("Sending quiz result email...");
+        const result = await sendQuizResultEmail(); // Backend handles content based on testMode
+        console.log("Email sent successfully:", result);
+      } catch (error) {
+        console.error("Email sending error:", error);
         setEmailError(
           "Failed to send quiz result email. Please check your connection or try again later."
         );
       }
     };
+
+    // Only send email when results are ready
     if (
       (testMode === "post" || testMode === "pre") &&
       detailedResults &&
-      detailedResults.length > 0
+      detailedResults.length > 0 &&
+      !loading &&
+      correctAnswers.length > 0
     ) {
       sendEmail();
     }
-    // eslint-disable-next-line
-  }, [testMode, detailedResults]);
+  }, [testMode, detailedResults, loading, correctAnswers]);
 
   if (loading) {
     return (
