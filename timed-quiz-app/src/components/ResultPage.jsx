@@ -29,7 +29,7 @@ const ResultPage = ({
         // Fetch correct answers
         const metadataRef = doc(db, "quiz_metadata", "default");
         const metadataSnap = await getDoc(metadataRef);
-        
+
         if (metadataSnap.exists()) {
           setCorrectAnswers(metadataSnap.data().correctAnswers);
         } else {
@@ -38,14 +38,16 @@ const ResultPage = ({
           );
           return;
         }
-        
+
         // Check if email has already been sent for this user
         if (auth.currentUser) {
           const userRef = doc(db, "quiz_responses", auth.currentUser.uid);
           const userSnap = await getDoc(userRef);
-          
+
           if (userSnap.exists() && userSnap.data().emailSent === true) {
-            console.log("Email was already sent previously. Skipping email send.");
+            console.log(
+              "Email was already sent previously. Skipping email send."
+            );
             setEmailAlreadySent(true);
           }
         }
@@ -58,7 +60,7 @@ const ResultPage = ({
         setLoading(false); // Done loading
       }
     };
-    
+
     fetchData();
   }, []);
 
@@ -99,7 +101,7 @@ const ResultPage = ({
           score: correct,
         });
         console.log("Email sent successfully:", result);
-        
+
         // Mark email as sent locally to prevent duplicate sending in this session
         setEmailAlreadySent(true);
       } catch (error) {
@@ -130,7 +132,7 @@ const ResultPage = ({
     quizDuration,
     correct,
     wrong,
-    emailAlreadySent
+    emailAlreadySent,
   ]);
 
   if (loading) {
