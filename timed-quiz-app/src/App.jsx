@@ -12,6 +12,16 @@ import { db } from "./utils/firebase";
 import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { questions } from "./data/questions";
 
+// ✅ SOLUTION: Initialize Firebase Functions services ONCE at the module level.
+const functions = getFunctions(app, "us-central1"); // Specify region here
+const sendQuizResultEmail = httpsCallable(functions, "sendQuizResultEmail", {
+  timeout: 60000, // Set timeout here
+});
+
+// For local development with Firebase emulator, uncomment this line:
+// import { connectFunctionsEmulator } from "firebase/functions";
+// connectFunctionsEmulator(functions, "localhost", 5001);
+
 const QUIZ_DURATION = 1200; // 20 minutes in seconds
 
 const App = () => {
@@ -238,19 +248,10 @@ const App = () => {
 
       // --- Send quiz result email via Firebase Function ---
       try {
-        // Specify the region where your function is deployed (use 'us-central1' if unsure)
-        const functions = getFunctions(app, "us-central1");
-
-        // For local development with Firebase emulator, uncomment this line:
-        // connectFunctionsEmulator(functions, "localhost", 5001);
-
-        const sendQuizResultEmail = httpsCallable(
-          functions,
-          "sendQuizResultEmail",
-          { timeout: 60000 } // Increase timeout to 60 seconds
-        );
-
         console.log("Calling sendQuizResultEmail function...");
+
+        // ✅ SOLUTION: Use the single, pre-initialized function reference.
+        // DO NOT create new instances here.
         await sendQuizResultEmail({
           email: user.email,
           name: userInfo.name,

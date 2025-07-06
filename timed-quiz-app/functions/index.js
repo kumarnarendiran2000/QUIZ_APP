@@ -26,6 +26,7 @@ exports.sendQuizResultEmail = onCall({
   memory: "256MiB", // Minimum memory requirement
   maxInstances: 10,
   timeoutSeconds: 60, // Increase timeout to 60 seconds
+  cors: /.*/, // Allow requests from any domain
 }, async (request) => {
   // Authentication check (optional)
   if (!request.auth) {
