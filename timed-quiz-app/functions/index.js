@@ -5,27 +5,9 @@
  */
 
 const {onCall} = require("firebase-functions/v2/https");
-      // Construct the HTML body for the email.
-      const testType = isPostTest ? "Post-Test" : "Pre-Test";
-      let html = '';
-      html += '<!DOCTYPE html>';
-      html += '<html>';
-      html += '<head>';
-      html += '<meta charset="UTF-8">';
-      html += '<meta name="viewport" content="width=device-width, initial-scale=1.0">';
-      html += '<title>Quiz Results</title>';
-      html += '<style>';
-      html += '@media screen and (max-width: 600px) {';
-      html += '  .two-column-table { display: block !important; }';
-      html += '  .two-column-cell { display: block !important; width: 100% !important; }';
-      html += '  .badge { display: block !important; margin: 5px 0 !important; }';
-      html += '  .question-item { padding: 10px !important; }';
-      html += '}';
-      html += '</style>';
-      html += '</head>';
-      html += '<body>';
-      html += `<div style="background:#f0f3fa;padding:32px 0;font-family:'Segoe UI',Arial,sans-serif;">`;
-
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+const sgMail = require("@sendgrid/mail");
 
 // Initialize Firebase Admin SDK.
 admin.initializeApp();
