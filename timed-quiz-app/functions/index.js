@@ -394,7 +394,7 @@ exports.sendQuizResultEmail = onCall(
       html += '<p style="font-size:1.2em;color:#333;margin-bottom:5px;">Best regards,</p>';
       html += '<p style="font-size:1.3em;font-weight:bold;color:#1a237e;margin-top:5px;">Dr. NK Bhat Skill Lab Team</p>';
       html += '</div>';
-      html += '<div style="margin-top:16px;font-size:0.95em;color:#777;text-align:center;font-style:italic;">[final v8 mobile-optimized]</div>';
+// Removed version marker as requested
       html += '</div>';
       html += '</div>';
       html += '</body>';
@@ -457,7 +457,7 @@ exports.sendQuizResultEmail = onCall(
             totalQuestions: normalizedDetails.length,
             answeredCount,
             unansweredCount,
-            emailVersion: "final v8 mobile-optimized",
+            // Removed emailVersion as version marker is no longer needed
             dataSource: frontendDetailedResults?.length > 0 ? "frontend" : "firestore",
             emailSent: true
           }
