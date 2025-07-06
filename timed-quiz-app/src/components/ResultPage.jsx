@@ -128,7 +128,6 @@ const ResultPage = ({
     if (
       (testMode === "post" || testMode === "pre") &&
       detailedResults &&
-      detailedResults.length > 0 &&
       !loading &&
       correctAnswers.length > 0 &&
       !emailAlreadySent
