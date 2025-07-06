@@ -84,13 +84,19 @@ exports.sendQuizResultEmail = onCall(
       }
 
       // Build a normalized details array in order, with question text, correct answer, user answer, isCorrect
+      // Map user answers to questions by question index, so all questions (answered or not) are included in order
       let normalizedDetails = [];
       if (Array.isArray(details) && questionsList.length > 0) {
+        // Build a map of answered question indices for fast lookup
+        const answerMap = {};
+        for (let i = 0; i < details.length; i++) {
+          // If details[i] has a questionIndex property, use it; else assume order matches
+          const idx = typeof details[i].questionIndex === 'number' ? details[i].questionIndex : i;
+          answerMap[idx] = details[i];
+        }
         for (let i = 0; i < questionsList.length; i++) {
           const qObj = questionsList[i];
-          // Find the user's answer for this question (by question index)
-          const d = Array.isArray(details) && details[i] ? details[i] : {};
-          // userAnswer is index, correctAnswer is index
+          const d = answerMap[i] || {};
           const userAnswerIdx = typeof d.userAnswer === 'number' ? d.userAnswer : null;
           const correctAnswerIdx = typeof d.correctAnswer === 'number' ? d.correctAnswer : (typeof qObj.correctAnswer === 'number' ? qObj.correctAnswer : null);
           const userAnswerText = (userAnswerIdx !== null && Array.isArray(qObj.options)) ? qObj.options[userAnswerIdx] : null;
@@ -169,6 +175,9 @@ exports.sendQuizResultEmail = onCall(
           html += '</li>';
         }
         html += '</ol>';
+        html += '<div style="margin-top:24px;font-size:1.1em;color:#333;">Thank you for attending the quiz.</div>';
+      } else if (!isPostTest) {
+        html += '<div style="margin-top:24px;font-size:1.1em;color:#333;">Thank you for attending the quiz. Your responses have been recorded. Please stay in touch with your instructor for further details. We hope to see you in the post-test!</div>';
       }
 
       html += '<p style="margin-top:32px;font-size:1.1em;">Best regards,<br/><b>Dr. NK Bhat Skill Lab Quiz Team</b></p>';
