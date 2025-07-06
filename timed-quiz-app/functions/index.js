@@ -76,7 +76,7 @@ exports.sendQuizResultEmail = onCall(
         console.error("Could not load questions.js for email details:", e);
       }
 
-      // Build a normalized details array in order, with question text, correct answer, user answer, isCorrect
+      // Build a normalized details array in order, with question text, correct answer, user answer, isCorrect, wasAnswered
       // Map user answers to questions by question index, so all questions (answered or not) are included in order
       let normalizedDetails = [];
       if (Array.isArray(details) && questionsList.length > 0) {
@@ -94,11 +94,15 @@ exports.sendQuizResultEmail = onCall(
           const correctAnswerIdx = typeof d.correctAnswer === 'number' ? d.correctAnswer : (typeof qObj.correctAnswer === 'number' ? qObj.correctAnswer : null);
           const userAnswerText = (userAnswerIdx !== null && Array.isArray(qObj.options)) ? qObj.options[userAnswerIdx] : null;
           const correctAnswerText = (correctAnswerIdx !== null && Array.isArray(qObj.options)) ? qObj.options[correctAnswerIdx] : null;
+          let isCorrect = false;
+          if (userAnswerIdx !== null && correctAnswerIdx !== null) {
+            isCorrect = userAnswerIdx === correctAnswerIdx;
+          }
           normalizedDetails.push({
             question: qObj.question,
             userAnswer: userAnswerText,
             correctAnswer: correctAnswerText,
-            isCorrect: d.isCorrect === true,
+            isCorrect,
             wasAnswered: userAnswerIdx !== null
           });
         }
@@ -174,6 +178,7 @@ exports.sendQuizResultEmail = onCall(
       }
 
       html += '<p style="margin-top:32px;font-size:1.1em;">Best regards,<br/><b>Dr. NK Bhat Skill Lab Quiz Team</b></p>';
+      html += '<div style="margin-top:12px;font-size:0.95em;color:#888;">[final v1]</div>';
       html += '</div>';
       html += '</div>';
 
