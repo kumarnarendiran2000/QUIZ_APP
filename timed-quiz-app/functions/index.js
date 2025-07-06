@@ -70,7 +70,7 @@ exports.sendQuizResultEmail = onCall(
           regno = data.regno || "";
           mobile = data.mobile || "";
           quizDuration = quizDurationFromFrontend || data.quizDuration || "";
-          isPostTest = testModeFromFrontend === "post" || (data.isPostTest !== undefined ? data.isPostTest : true);
+          isPostTest = testModeFromFrontend === "post" || (testModeFromFrontend === undefined && (data.isPostTest !== undefined ? data.isPostTest : true));
           score = data.score !== undefined ? data.score : (data.correctCount !== undefined ? data.correctCount : 0);
           correct = data.correct !== undefined ? data.correct : (data.correctCount !== undefined ? data.correctCount : 0);
           wrong = data.wrong !== undefined ? data.wrong : (data.wrongCount !== undefined ? data.wrongCount : 0);
@@ -213,6 +213,15 @@ exports.sendQuizResultEmail = onCall(
         // Update score based on normalizedDetails
         score = normalizedDetails.filter(q => q.isCorrect).length;
       }
+      
+      // Log important variables for debugging
+      console.log("Email generation data:", {
+        testModeFromFrontend,
+        isPostTest,
+        questionCount: normalizedDetails.length,
+        answeredCount,
+        unansweredCount
+      });
 
       // Construct the HTML body for the email.
       const testType = isPostTest ? "Post-Test" : "Pre-Test";
@@ -285,12 +294,13 @@ exports.sendQuizResultEmail = onCall(
         
         html += '</ol>';
         html += '<div style="margin-top:24px;font-size:1.1em;color:#333;">Thank you for attending the quiz.</div>';
-      } else if (!isPostTest) {
-        html += '<div style="margin-top:24px;font-size:1.1em;color:#333;">Thank you for attending the quiz. Your responses have been recorded. Please stay in touch with your instructor for further details. We hope to see you in the post-test!</div>';
+      } else {
+        // This is a pre-test
+        html += '<div style="margin-top:24px;font-size:1.1em;color:#333;">Thank you for attending the pre-test quiz. Your responses have been recorded. Please stay in touch with your instructor for further details. We hope to see you in the post-test!</div>';
       }
 
       html += '<p style="margin-top:32px;font-size:1.1em;">Best regards,<br/><b>Dr. NK Bhat Skill Lab Quiz Team</b></p>';
-      html += '<div style="margin-top:12px;font-size:0.95em;color:#888;">[final v3]</div>';
+      html += '<div style="margin-top:12px;font-size:0.95em;color:#888;">[final v4]</div>';
       html += '</div>';
       html += '</div>';
 
