@@ -1,26 +1,14 @@
 // src/App.jsx
 import React, { useEffect, useState } from "react";
-import { getFunctions, httpsCallable } from "firebase/functions";
-import { app } from "./utils/firebase";
 import Login from "./components/Login";
 import UserForm from "./components/UserForm";
 import QuizPage from "./components/QuizPage";
 import ResultPage from "./components/ResultPage";
 import AdminDashboard from "./components/AdminDashboard";
 import Layout from "./components/Layout";
-import { db } from "./utils/firebase";
+import { db, sendQuizResultEmail } from "./utils/firebase";
 import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { questions } from "./data/questions";
-
-// ✅ SOLUTION: Initialize Firebase Functions services ONCE at the module level.
-const functions = getFunctions(app, "us-central1"); // Specify region here
-const sendQuizResultEmail = httpsCallable(functions, "sendQuizResultEmail", {
-  timeout: 60000, // Set timeout here
-});
-
-// For local development with Firebase emulator, uncomment this line:
-// import { connectFunctionsEmulator } from "firebase/functions";
-// connectFunctionsEmulator(functions, "localhost", 5001);
 
 const QUIZ_DURATION = 1200; // 20 minutes in seconds
 
@@ -195,14 +183,15 @@ const App = () => {
     const detailedResults = [];
 
     finalAnswers.forEach((selected, i) => {
+      const question = questions[i];
       const correct = correctAnswers[i];
       const isCorrect = selected === correct;
 
       if (selected !== null && typeof selected === "number") {
         detailedResults.push({
-          q: i + 1, // start from 1
-          selected,
-          correct,
+          question: question.question, // The question text
+          userAnswer: question.options[selected], // The text of the user's answer
+          correctAnswer: question.options[correct], // The text of the correct answer
           isCorrect,
         });
 
@@ -250,31 +239,18 @@ const App = () => {
       try {
         console.log("Calling sendQuizResultEmail function...");
 
-        // ✅ SOLUTION: Use the single, pre-initialized function reference.
-        // DO NOT create new instances here.
         await sendQuizResultEmail({
-          email: user.email,
           name: userInfo.name,
-          isPostTest: (testModeAtStart || testMode) === "post",
+          email: user.email,
           score: correctCount,
           correct: correctCount,
           wrong: questions.length - correctCount,
           total: questions.length,
-          details: detailedResults.map((r, i) => ({
-            question: questions[i].question,
-            userAnswer:
-              typeof r.selected === "number"
-                ? questions[i].options[r.selected]
-                : "Unanswered",
-            correctAnswer:
-              typeof r.correct === "number"
-                ? questions[i].options[r.correct]
-                : "",
-            isCorrect: r.isCorrect,
-          })),
-        }).then((result) => {
-          console.log("Email sent successfully:", result.data);
+          details: detailedResults, // Make sure this is populated
+          isPostTest: true, // Or determine this dynamically
         });
+
+        console.log("Function call successful!");
       } catch (err) {
         // Enhanced error logging with details to help diagnose the issue
         console.error("Failed to send quiz result email:", {

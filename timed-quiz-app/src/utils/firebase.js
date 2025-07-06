@@ -2,6 +2,7 @@
 import { initializeApp } from "firebase/app"
 import { getAuth, GoogleAuthProvider } from "firebase/auth"
 import { getFirestore } from "firebase/firestore"
+import { getFunctions, httpsCallable } from "firebase/functions";
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -18,3 +19,6 @@ export const app = initializeApp(firebaseConfig)
 export const auth = getAuth(app)
 export const provider = new GoogleAuthProvider()
 export const db = getFirestore(app)
+export const functions = getFunctions(app, 'us-central1');
+
+export const sendQuizResultEmail = httpsCallable(functions, 'sendQuizResultEmail');

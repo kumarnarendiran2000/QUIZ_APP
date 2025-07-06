@@ -63,7 +63,7 @@ exports.sendQuizResultEmail = onCall({
 
   const msg = {
     to: email,
-    from: "dr.nk.bhat.skill.lab@gmail.com", // Your verified sender
+    from: "noreply@dr-nk-bhat-skill-lab-test-app.pro", // Use authenticated domain
     subject: "Your Quiz Result",
     html,
   };
