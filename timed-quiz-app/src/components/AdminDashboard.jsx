@@ -29,7 +29,6 @@ const AdminDashboard = () => {
       setTimeout(() => setShowMobileSnackbar(false), 15000); // Increased to 15 seconds
     }
   };
-  // ...existing code...
   // Test mode state (pre/post), loaded from Firestore
   const [testMode, setTestMode] = useState("post");
   const [testModeLoading, setTestModeLoading] = useState(true);
@@ -62,6 +61,7 @@ const AdminDashboard = () => {
   const [viewing, setViewing] = useState(null);
   const [isSorted, setIsSorted] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // {id, name} or null
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
   const tableRef = useRef();
@@ -114,12 +114,14 @@ const AdminDashboard = () => {
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
+    setDeleteLoading(true);
     try {
       await deleteDoc(doc(db, "quiz_responses", deleteTarget.id));
       setDeleteTarget(null);
     } catch (err) {
       alert("Failed to delete record: " + err.message);
     }
+    setDeleteLoading(false);
   };
 
   // Handle select all toggle
@@ -467,13 +469,17 @@ const AdminDashboard = () => {
               <div className="flex gap-4 w-full justify-center mt-2">
                 <button
                   onClick={handleDelete}
-                  className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg shadow transition w-1/2 cursor-pointer"
+                  disabled={deleteLoading}
+                  className={`bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-lg shadow transition w-1/2 ${
+                    deleteLoading ? "opacity-60 cursor-not-allowed" : ""
+                  }`}
                 >
-                  Delete
+                  {deleteLoading ? "Deleting..." : "Delete"}
                 </button>
                 <button
                   onClick={() => setDeleteTarget(null)}
-                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-lg shadow transition w-1/2 cursor-pointer"
+                  disabled={deleteLoading}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-lg shadow transition w-1/2"
                 >
                   Cancel
                 </button>
