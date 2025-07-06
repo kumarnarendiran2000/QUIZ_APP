@@ -47,7 +47,7 @@ const Login = ({ onLogin }) => {
             begin.
           </li>
           <li>
-            The quiz is <strong>time-based</strong> — you’ll have{" "}
+            The test is <strong>time-based</strong> — you’ll have{" "}
             <span className="text-blue-700 font-medium">20 minutes</span> to
             answer <strong>40 questions</strong>.
           </li>
@@ -58,15 +58,15 @@ const Login = ({ onLogin }) => {
           </li>
           <li>
             <span className="text-red-700 font-bold">
-              Copying any quiz content is strictly prohibited.
+              Copying any test content is strictly prohibited.
             </span>
           </li>
           <li>
             <span className="text-yellow-700 font-semibold">
               If you perform any prohibited action, a warning popup will appear.
               You must read the warning and click the action button to resume
-              the quiz within the time mentioned. If you do not respond in time,
-              your quiz will be auto-submitted.
+              the test within the time mentioned. If you do not respond in time,
+              your test will be auto-submitted.
             </span>
           </li>
           <li>
@@ -79,7 +79,7 @@ const Login = ({ onLogin }) => {
             </strong>
           </li>
           <li>
-            ⏳ <strong>If the timer runs out</strong>, your quiz will be{" "}
+            ⏳ <strong>If the timer runs out</strong>, your test will be{" "}
             <strong>automatically submitted</strong>, even if unanswered.
           </li>
           <li>

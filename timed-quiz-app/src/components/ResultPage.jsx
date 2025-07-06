@@ -215,7 +215,7 @@ const ResultPage = ({
         </div>
       )}
       <h2 className="text-3xl font-bold mb-6 text-gray-800 border-b pb-3 text-center bg-gray-50 p-4 rounded-lg shadow-sm">
-        🎯 Your Quiz Results {testMode === "pre" ? "(Pre-Test)" : "(Post-Test)"}
+        🎯 Your Results {testMode === "pre" ? "(Pre-Test)" : "(Post-Test)"}
       </h2>
       <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4 bg-gray-50 p-5 rounded-lg border border-gray-200">
         <div className="space-y-2">
@@ -270,7 +270,7 @@ const ResultPage = ({
         <div className="mt-8 text-center p-6 bg-blue-50 rounded-lg border border-blue-200">
           <h3 className="text-2xl font-bold text-blue-800 mb-4">Thank You!</h3>
           <p className="text-xl text-blue-700">
-            Thank you for attending the pre-test quiz. Your responses have been
+            Thank you for attending the pre-test. Your responses have been
             recorded.
           </p>
           <p className="text-lg text-blue-600 mt-2">
@@ -287,11 +287,11 @@ const ResultPage = ({
               Thank You!
             </h3>
             <p className="text-xl text-green-700">
-              Thank you for attending the post-test quiz. Your responses have
-              been recorded.
+              Thank you for attending the post-test. Your responses have been
+              recorded.
             </p>
             <p className="text-lg text-green-600 mt-3">
-              Please find the question-wise details of your quiz below for
+              Please find the question-wise details of your test below for
               reference.
             </p>
           </div>

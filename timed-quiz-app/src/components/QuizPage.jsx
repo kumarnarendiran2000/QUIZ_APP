@@ -324,7 +324,7 @@ const QuizPage = ({
               : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
           }`}
         >
-          {submitting ? "Submitting quiz, please wait..." : "Submit Quiz"}
+          {submitting ? "Submitting test, please wait..." : "Submit Test"}
         </button>
       </div>
 
@@ -342,7 +342,7 @@ const QuizPage = ({
                 <span className="text-base sm:text-lg text-gray-700 font-medium mb-1 sm:mb-2">
                   Tab switching is{" "}
                   <span className="text-red-600 font-bold">prohibited</span>{" "}
-                  during the quiz.
+                  during the test.
                 </span>
                 <span className="text-sm sm:text-base text-gray-600 mb-2 w-full">
                   {tabSwitchCount < MAX_TAB_SWITCHES ? (
@@ -376,7 +376,7 @@ const QuizPage = ({
                           {proctorCountdown}
                         </span>
                       </span>
-                      seconds, your quiz will be auto-submitted.
+                      seconds, your test will be auto-submitted.
                     </>
                   ) : tabSwitchCount === MAX_TAB_SWITCHES ? (
                     <>
@@ -407,7 +407,7 @@ const QuizPage = ({
                   disabled={proctorCountdown === 0}
                 >
                   <span className="inline-block align-middle mr-2">🔓</span>
-                  Resume Quiz
+                  Resume Test
                 </button>
               )}
             </div>
@@ -432,7 +432,7 @@ const QuizPage = ({
                 </span>
                 <br />
                 <span className="text-blue-700 font-bold">
-                  Your quiz is being auto-submitted.
+                  Your test is being auto-submitted.
                 </span>
               </p>
               <div className="flex items-center justify-center mt-2">
@@ -461,7 +461,7 @@ const QuizPage = ({
               </span>
               <br />
               <span className="text-blue-700 font-bold">
-                Your quiz is being auto-submitted.
+                Your test is being auto-submitted.
               </span>
             </p>
             <div className="flex items-center justify-center mt-2">
@@ -484,7 +484,7 @@ const QuizPage = ({
               <span className="text-base sm:text-lg text-gray-700 font-medium mb-1 sm:mb-2">
                 Copying is{" "}
                 <span className="text-red-600 font-bold">not allowed</span>{" "}
-                during the quiz.
+                during the test.
               </span>
               <span className="text-sm sm:text-base text-gray-600 mb-2 w-full">
                 {copyAttemptCount < MAX_COPY_ATTEMPTS ? (
@@ -495,7 +495,7 @@ const QuizPage = ({
                     </span>
                     copy attempt(s) left.
                     <br />
-                    If you try to copy again, your quiz will be{" "}
+                    If you try to copy again, your test will be{" "}
                     <span className="font-bold text-red-700">
                       auto-submitted
                     </span>
