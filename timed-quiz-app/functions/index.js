@@ -39,6 +39,25 @@ exports.sendQuizResultEmail = onCall(
         );
       }
 
+      // Extract any frontend data passed to the function
+      const frontendData = request.data || {};
+      const {
+        answers: frontendAnswers, 
+        detailedResults: frontendDetailedResults,
+        correctAnswers: frontendCorrectAnswers,
+        allQuestions: frontendQuestions,
+        quizDurationFromFrontend,
+        testModeFromFrontend
+      } = frontendData;
+
+      console.log("Received frontend data:", JSON.stringify({
+        hasAnswers: Array.isArray(frontendAnswers),
+        hasDetailedResults: Array.isArray(frontendDetailedResults),
+        hasCorrectAnswers: Array.isArray(frontendCorrectAnswers),
+        hasAllQuestions: Array.isArray(frontendQuestions),
+        answersLength: frontendAnswers?.length || 0,
+        detailedResultsLength: frontendDetailedResults?.length || 0
+      }));
 
       // Always fetch quiz response from Firestore for reliability
       let email = "", name = "", regno = "", mobile = "", quizDuration = "", isPostTest = false, score = 0, correct = 0, wrong = 0, total = 0, details = [];
@@ -50,8 +69,8 @@ exports.sendQuizResultEmail = onCall(
           name = data.name || "";
           regno = data.regno || "";
           mobile = data.mobile || "";
-          quizDuration = data.quizDuration || "";
-          isPostTest = data.isPostTest !== undefined ? data.isPostTest : true;
+          quizDuration = quizDurationFromFrontend || data.quizDuration || "";
+          isPostTest = testModeFromFrontend === "post" || (data.isPostTest !== undefined ? data.isPostTest : true);
           score = data.score !== undefined ? data.score : (data.correctCount !== undefined ? data.correctCount : 0);
           correct = data.correct !== undefined ? data.correct : (data.correctCount !== undefined ? data.correctCount : 0);
           wrong = data.wrong !== undefined ? data.wrong : (data.wrongCount !== undefined ? data.wrongCount : 0);
@@ -70,40 +89,73 @@ exports.sendQuizResultEmail = onCall(
       // If details is missing question text, fetch from questions.js
       let questionsList = [];
       try {
-        // Dynamically import questions.js (Node.js require)
-        questionsList = require("../src/data/questions.js").questions;
+        // First try to use questions from frontend
+        if (Array.isArray(frontendQuestions) && frontendQuestions.length > 0) {
+          questionsList = frontendQuestions;
+          console.log("Using questions from frontend data");
+        } else {
+          // Fallback to loading from questions.js
+          questionsList = require("../src/data/questions.js").questions;
+          console.log("Using questions from local questions.js file");
+        }
       } catch (e) {
-        console.error("Could not load questions.js for email details:", e);
+        console.error("Could not load questions for email details:", e);
       }
 
       // Build a normalized details array in order, with question text, correct answer, user answer, isCorrect, wasAnswered
       // Map user answers to questions by question index, so all questions (answered or not) are included in order
       let normalizedDetails = [];
       
-      // Fetch user answers directly from Firestore document - critical for including unanswered questions
+      // Prefer frontend answers over Firestore answers if provided
       let userAnswers = [];
-      try {
-        const userData = await admin.firestore().collection("quiz_responses").doc(request.auth.uid).get();
-        if (userData.exists) {
-          userAnswers = userData.data().answers || [];
+      if (Array.isArray(frontendAnswers) && frontendAnswers.length > 0) {
+        userAnswers = frontendAnswers;
+        console.log(`Using ${frontendAnswers.length} answers from frontend data`);
+      } else {
+        // Fetch user answers from Firestore as fallback
+        try {
+          const userData = await admin.firestore().collection("quiz_responses").doc(request.auth.uid).get();
+          if (userData.exists) {
+            userAnswers = userData.data().answers || [];
+            console.log(`Using ${userAnswers.length} answers from Firestore`);
+          }
+        } catch (e) {
+          console.error("Failed to fetch user answers from Firestore:", e);
         }
-      } catch (e) {
-        console.error("Failed to fetch user answers from Firestore:", e);
       }
       
-      // Try to get correctAnswers from metadata
+      // Prefer frontend correct answers over Firestore if provided
       let correctAnswers = [];
-      try {
-        const metaDoc = await admin.firestore().collection("quiz_metadata").doc("default").get();
-        if (metaDoc.exists) {
-          correctAnswers = metaDoc.data().correctAnswers || [];
+      if (Array.isArray(frontendCorrectAnswers) && frontendCorrectAnswers.length > 0) {
+        correctAnswers = frontendCorrectAnswers;
+        console.log(`Using ${frontendCorrectAnswers.length} correct answers from frontend data`);
+      } else {
+        // Try to get correctAnswers from metadata as fallback
+        try {
+          const metaDoc = await admin.firestore().collection("quiz_metadata").doc("default").get();
+          if (metaDoc.exists) {
+            correctAnswers = metaDoc.data().correctAnswers || [];
+            console.log(`Using ${correctAnswers.length} correct answers from Firestore`);
+          }
+        } catch (e) {
+          console.error("Failed to fetch correct answers from Firestore:", e);
         }
-      } catch (e) {
-        console.error("Failed to fetch correct answers from Firestore:", e);
       }
       
-      if (questionsList.length > 0) {
+      if (Array.isArray(frontendDetailedResults) && frontendDetailedResults.length > 0) {
+        // Use detailed results from frontend if provided
+        console.log(`Using ${frontendDetailedResults.length} detailed results from frontend data`);
+        normalizedDetails = frontendDetailedResults.map(q => ({
+          question: q.question || '-',
+          userAnswer: q.userAnswer || null,
+          correctAnswer: q.correctAnswer || null,
+          isCorrect: q.isCorrect === true,
+          wasAnswered: q.wasAnswered === true,
+          topic: q.topic || 'Other'
+        }));
+      } else if (questionsList.length > 0) {
         // Process all questions in order, whether answered or not
+        console.log(`Building normalized details from ${questionsList.length} questions and ${userAnswers.length} answers`);
         for (let i = 0; i < questionsList.length; i++) {
           const qObj = questionsList[i];
           const userAnswerIdx = i < userAnswers.length ? userAnswers[i] : null;
@@ -122,23 +174,45 @@ exports.sendQuizResultEmail = onCall(
             userAnswer: userAnswerText,
             correctAnswer: correctAnswerText,
             isCorrect,
-            wasAnswered: userAnswerIdx !== null
+            wasAnswered: userAnswerIdx !== null,
+            topic: qObj.topic || 'Other'
           });
         }
       } else if (Array.isArray(details)) {
         // Fallback: use details as-is, but ensure we include indicators for unanswered questions
+        console.log(`Using ${details.length} details from Firestore as fallback`);
         normalizedDetails = details.map(q => ({
           question: q.question || '-',
           userAnswer: q.userAnswer || null,
           correctAnswer: q.correctAnswer || null,
           isCorrect: q.isCorrect === true,
-          wasAnswered: q.userAnswer !== null && q.userAnswer !== undefined
+          wasAnswered: q.userAnswer !== null && q.userAnswer !== undefined,
+          topic: q.topic || 'Other'
         }));
       }
+      
       const answeredCount = normalizedDetails.filter(q => q.wasAnswered).length;
       const unansweredCount = normalizedDetails.length - answeredCount;
 
-
+      // Use frontend provided score counts if available
+      if (frontendData.correct !== undefined) {
+        correct = frontendData.correct;
+      }
+      if (frontendData.wrong !== undefined) {
+        wrong = frontendData.wrong;
+      }
+      if (frontendData.total !== undefined) {
+        total = frontendData.total;
+      } else if (normalizedDetails.length > 0) {
+        // Use normalized details length as total if not provided
+        total = normalizedDetails.length;
+      }
+      if (frontendData.score !== undefined) {
+        score = frontendData.score;
+      } else {
+        // Update score based on normalizedDetails
+        score = normalizedDetails.filter(q => q.isCorrect).length;
+      }
 
       // Construct the HTML body for the email.
       const testType = isPostTest ? "Post-Test" : "Pre-Test";
@@ -174,7 +248,7 @@ exports.sendQuizResultEmail = onCall(
         const questionsByTopic = {};
         for (let i = 0; i < normalizedDetails.length; i++) {
           const q = normalizedDetails[i];
-          const topic = (questionsList[i] && questionsList[i].topic) || 'Other';
+          const topic = q.topic || 'Other';
           if (!questionsByTopic[topic]) {
             questionsByTopic[topic] = [];
           }
@@ -216,7 +290,7 @@ exports.sendQuizResultEmail = onCall(
       }
 
       html += '<p style="margin-top:32px;font-size:1.1em;">Best regards,<br/><b>Dr. NK Bhat Skill Lab Quiz Team</b></p>';
-      html += '<div style="margin-top:12px;font-size:0.95em;color:#888;">[final v2]</div>';
+      html += '<div style="margin-top:12px;font-size:0.95em;color:#888;">[final v3]</div>';
       html += '</div>';
       html += '</div>';
 
@@ -269,7 +343,8 @@ exports.sendQuizResultEmail = onCall(
             totalQuestions: normalizedDetails.length,
             answeredCount,
             unansweredCount,
-            emailVersion: "final v2"
+            emailVersion: "final v3",
+            dataSource: frontendDetailedResults?.length > 0 ? "frontend" : "firestore"
           }
         };
       } catch (error) {

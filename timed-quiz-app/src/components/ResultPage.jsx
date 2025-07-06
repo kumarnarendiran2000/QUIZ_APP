@@ -49,8 +49,38 @@ const ResultPage = ({
     // Send email for both pre and post test after results are loaded
     const sendEmail = async () => {
       try {
-        console.log("Sending quiz result email...");
-        const result = await sendQuizResultEmail(); // Backend handles content based on testMode
+        console.log("Sending quiz result email with frontend data...");
+
+        // Create normalized detailed results to match backend's expected format
+        const normalizedResults = questions.map((q, i) => {
+          const selected = answers[i];
+          const correct = correctAnswers[i];
+          const isCorrect = selected === correct;
+          const wasAnswered = typeof selected === "number";
+
+          return {
+            question: q.question,
+            userAnswer: wasAnswered ? q.options[selected] : null,
+            correctAnswer: q.options[correct],
+            isCorrect,
+            wasAnswered,
+            topic: q.topic || "Other",
+          };
+        });
+
+        // Pass data to backend function
+        const result = await sendQuizResultEmail({
+          answers,
+          detailedResults: normalizedResults,
+          correctAnswers,
+          allQuestions: questions,
+          quizDurationFromFrontend: quizDuration,
+          testModeFromFrontend: testMode,
+          correct,
+          wrong,
+          total: questions.length,
+          score: correct,
+        });
         console.log("Email sent successfully:", result);
       } catch (error) {
         console.error("Email sending error:", error);
@@ -70,7 +100,16 @@ const ResultPage = ({
     ) {
       sendEmail();
     }
-  }, [testMode, detailedResults, loading, correctAnswers]);
+  }, [
+    testMode,
+    detailedResults,
+    loading,
+    correctAnswers,
+    answers,
+    quizDuration,
+    correct,
+    wrong,
+  ]);
 
   if (loading) {
     return (
