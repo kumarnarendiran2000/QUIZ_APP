@@ -226,32 +226,32 @@ exports.sendQuizResultEmail = onCall(
       // Construct the HTML body for the email.
       const testType = isPostTest ? "Post-Test" : "Pre-Test";
       let html = '';
-      html += `<div style="background:#f6f8fa;padding:32px 0;font-family:Arial,sans-serif;">
-        <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:10px;box-shadow:0 2px 8px #e0e0e0;padding:32px 24px;">
-          <div style="text-align:center;margin-bottom:24px;">
-            <img src='https://dr-nk-bhat-skill-lab-test-app.pro/NET-Medical-College.png' alt='NET Medical College Logo' style='height:60px;margin-bottom:8px;' />
-            <h2 style="margin:8px 0 0 0;color:#1a237e;font-size:1.6em;">Dr. NK Bhat Skill Lab Quiz Team</h2>
+      html += `<div style="background:#f0f3fa;padding:32px 0;font-family:'Segoe UI',Arial,sans-serif;">
+        <div style="max-width:650px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:36px 28px;">
+          <div style="text-align:center;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid #e8eaf6;">
+            <img src='https://dr-nk-bhat-skill-lab-test-app.pro/NET-Medical-College.png' alt='NET Medical College Logo' style='height:70px;margin-bottom:12px;' />
+            <h2 style="margin:8px 0 0 0;color:#1a237e;font-size:1.8em;font-weight:700;">Dr. NK Bhat Skill Lab Quiz Team</h2>
           </div>
-          <div style="font-size:1.1em;margin-bottom:18px;">
-            <span style="font-size:1.1em;">Dear <b>${name || "Participant"}</b>,</span><br>
-            <span style="display:block;margin:10px 0 0 0;">Please find your quiz details below:</span>
+          <div style="font-size:1.25em;margin-bottom:22px;line-height:1.4;">
+            <span style="font-size:1.2em;">Dear <b>${name || "Participant"}</b>,</span><br>
+            <span style="display:block;margin:12px 0 0 0;color:#444;font-style:italic;">Please find your quiz details below:</span>
           </div>
-          <div style="font-size:1.1em;margin-bottom:18px;">
-            <b>Name:</b> ${name || "-"}<br>
-            <b>Registration Number:</b> ${regno || "-"}<br>
-            <b>Mobile:</b> ${mobile || "-"}<br>
-            <b>Email:</b> ${email || "-"}<br>
+          <div style="font-size:1.2em;margin-bottom:22px;line-height:1.6;background:#f9faff;padding:16px;border-left:4px solid #7986cb;border-radius:6px;">
+            <b style="color:#303f9f;">Name:</b> ${name || "-"}<br>
+            <b style="color:#303f9f;">Registration Number:</b> ${regno || "-"}<br>
+            <b style="color:#303f9f;">Mobile:</b> ${mobile || "-"}<br>
+            <b style="color:#303f9f;">Email:</b> ${email || "-"}<br>
           </div>
-          <div style="background:#f0f4c3;padding:16px 20px;border-radius:8px;margin:18px 0 24px 0;">
-            <b>Test Type:</b> <span style="color:#1565c0;">${testType}</span><br>
-            <b>Your Score:</b> <span style="color:#388e3c;">${score} / ${total}</span><br>
-            <b>Correct:</b> <span style="color:#388e3c;">${correct}</span> &nbsp; <b>Wrong:</b> <span style="color:#d32f2f;">${wrong}</span><br>
-            <b>Answered:</b> <span style="color:#1976d2;">${answeredCount}</span> &nbsp; <b>Unanswered:</b> <span style="color:#757575;">${unansweredCount}</span><br>
-            <b>Time Taken:</b> <span style="color:#1976d2;">${quizDuration || "-"}</span>
+          <div style="background:linear-gradient(to right, #f0f4c3, #e8f5e9);padding:20px 22px;border-radius:10px;margin:24px 0 28px 0;box-shadow:0 2px 8px rgba(0,0,0,0.05);font-size:1.2em;line-height:1.8;">
+            <b style="color:#1a237e;font-size:1.1em;">Test Type:</b> <span style="color:#1565c0;font-weight:bold;">${testType}</span><br>
+            <b style="color:#1a237e;font-size:1.1em;">Your Score:</b> <span style="color:#2e7d32;font-weight:bold;font-size:1.2em;">${score} / ${total}</span><br>
+            <b style="color:#1a237e;">Correct:</b> <span style="color:#2e7d32;font-weight:bold;">${correct}</span> &nbsp; <b style="color:#1a237e;">Wrong:</b> <span style="color:#c62828;font-weight:bold;">${wrong}</span><br>
+            <b style="color:#1a237e;">Answered:</b> <span style="color:#0d47a1;font-weight:bold;">${answeredCount}</span> &nbsp; <b style="color:#1a237e;">Unanswered:</b> <span style="color:#424242;font-weight:bold;">${unansweredCount}</span><br>
+            <b style="color:#1a237e;">Time Taken:</b> <span style="color:#0d47a1;font-weight:bold;">${quizDuration || "-"}</span>
           </div>`;
 
       if (isPostTest && normalizedDetails.length > 0) {
-        html += '<h3 style="color:#1a237e;margin-bottom:10px;">Question-wise Details:</h3><ol style="padding-left:20px;">';
+        html += '<h3 style="color:#1a237e;margin-bottom:16px;font-size:1.4em;text-align:center;border-bottom:2px dashed #c5cae9;padding-bottom:10px;">Question-wise Details</h3><ol style="padding-left:20px;">';
         
         // Group questions by topic for better organization
         const questionsByTopic = {};
@@ -266,41 +266,48 @@ exports.sendQuizResultEmail = onCall(
         
         // Output questions by topic
         Object.keys(questionsByTopic).forEach(topic => {
-          html += `<div style="margin:16px 0 10px 0;background:#e8eaf6;padding:8px 12px;border-radius:5px;font-weight:bold;color:#1a237e;">${topic}</div>`;
+          html += `<div style="margin:20px 0 12px 0;background:linear-gradient(to right, #e8eaf6, #c5cae9);padding:12px 16px;border-radius:8px;font-weight:bold;color:#283593;font-size:1.2em;text-transform:uppercase;letter-spacing:1px;">${topic}</div>`;
           
           questionsByTopic[topic].forEach(q => {
             const i = q.index;
-            const rowBg = i % 2 === 0 ? '#f9fbe7' : '#fff';
-            html += '<li style="margin-bottom:18px;line-height:1.6;background:' + rowBg + ';padding:12px 10px;border-radius:8px;box-shadow:0 1px 2px #ececec;">';
-            html += '<div style="font-weight:bold;color:#283593;">Q' + (i + 1) + ': ' + (q.question || '-') + '</div>';
+            const rowBg = i % 2 === 0 ? '#f9fbe7' : '#ffffff';
+            html += '<li style="margin-bottom:22px;line-height:1.7;background:' + rowBg + ';padding:16px 14px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.08);font-size:1.1em;">';
+            html += '<div style="font-weight:bold;color:#283593;font-size:1.1em;margin-bottom:8px;border-bottom:1px solid #e0e0e0;padding-bottom:6px;">Q' + (i + 1) + ': ' + (q.question || '-') + '</div>';
             
             if (!q.wasAnswered) {
-              html += '<div><b>Status:</b> <span style="color:#ffa000;">⚪ Unanswered</span></div>';
-              html += '<div><b>Your Answer:</b> <span style="color:#757575;">Unanswered</span></div>';
-              html += '<div><b>Correct Answer:</b> <span style="color:#1565c0;">' + (q.correctAnswer || '-') + '</span></div>';
+              html += '<div style="margin-top:10px;"><b style="color:#424242;">Status:</b> <span style="color:#ff8f00;font-weight:bold;">⚪ Unanswered</span></div>';
+              html += '<div><b style="color:#424242;">Your Answer:</b> <span style="color:#757575;font-style:italic;">Unanswered</span></div>';
+              html += '<div><b style="color:#424242;">Correct Answer:</b> <span style="color:#0d47a1;font-weight:500;">' + (q.correctAnswer || '-') + '</span></div>';
             } else if (q.isCorrect) {
-              html += '<div><b>Status:</b> <span style="color:#388e3c;">🟢 Answered</span></div>';
-              html += '<div><b>Your Answer:</b> <span style="color:#388e3c;">' + (q.userAnswer || '-') + '</span></div>';
-              html += '<div style="color:#388e3c;font-weight:bold;">✅ Correct</div>';
+              html += '<div style="margin-top:10px;"><b style="color:#424242;">Status:</b> <span style="color:#2e7d32;font-weight:bold;">🟢 Answered</span></div>';
+              html += '<div><b style="color:#424242;">Your Answer:</b> <span style="color:#2e7d32;font-weight:500;">' + (q.userAnswer || '-') + '</span></div>';
+              html += '<div style="color:#2e7d32;font-weight:bold;background:#e8f5e9;display:inline-block;padding:4px 10px;margin-top:6px;border-radius:4px;">✅ Correct</div>';
             } else {
-              html += '<div><b>Status:</b> <span style="color:#d32f2f;">🟠 Answered</span></div>';
-              html += '<div><b>Your Answer:</b> <span style="color:#d32f2f;">' + (q.userAnswer || '-') + '</span></div>';
-              html += '<div><b>Correct Answer:</b> <span style="color:#1565c0;">' + (q.correctAnswer || '-') + '</span></div>';
-              html += '<div style="color:#d32f2f;font-weight:bold;">❌ Wrong</div>';
+              html += '<div style="margin-top:10px;"><b style="color:#424242;">Status:</b> <span style="color:#c62828;font-weight:bold;">🟠 Answered</span></div>';
+              html += '<div><b style="color:#424242;">Your Answer:</b> <span style="color:#c62828;font-weight:500;">' + (q.userAnswer || '-') + '</span></div>';
+              html += '<div><b style="color:#424242;">Correct Answer:</b> <span style="color:#0d47a1;font-weight:500;">' + (q.correctAnswer || '-') + '</span></div>';
+              html += '<div style="color:#c62828;font-weight:bold;background:#ffebee;display:inline-block;padding:4px 10px;margin-top:6px;border-radius:4px;">❌ Wrong</div>';
             }
             html += '</li>';
           });
         });
         
         html += '</ol>';
-        html += '<div style="margin-top:24px;font-size:1.1em;color:#333;">Thank you for attending the quiz.</div>';
+        html += '<div style="margin-top:28px;font-size:1.2em;color:#333;text-align:center;font-style:italic;background:#f5f5f5;padding:16px;border-radius:8px;">Thank you for attending the quiz!</div>';
       } else {
         // This is a pre-test
-        html += '<div style="margin-top:24px;font-size:1.1em;color:#333;">Thank you for attending the pre-test quiz. Your responses have been recorded. Please stay in touch with your instructor for further details. We hope to see you in the post-test!</div>';
+        html += '<div style="margin-top:28px;font-size:1.2em;color:#333;text-align:center;background:linear-gradient(to right, #e8f5e9, #e3f2fd);padding:20px;border-radius:10px;line-height:1.6;">';
+        html += '<span style="font-weight:600;color:#1a237e;font-size:1.1em;display:block;margin-bottom:10px;">Thank you for completing the pre-test quiz!</span>';
+        html += 'Your responses have been recorded successfully.<br>Please stay in touch with your instructor for further details.<br>';
+        html += '<span style="font-style:italic;color:#0d47a1;display:block;margin-top:10px;">We look forward to seeing you in the post-test!</span>';
+        html += '</div>';
       }
 
-      html += '<p style="margin-top:32px;font-size:1.1em;">Best regards,<br/><b>Dr. NK Bhat Skill Lab Quiz Team</b></p>';
-      html += '<div style="margin-top:12px;font-size:0.95em;color:#888;">[final v4]</div>';
+      html += '<div style="margin-top:36px;border-top:1px solid #e0e0e0;padding-top:20px;text-align:center;">';
+      html += '<p style="font-size:1.2em;color:#333;margin-bottom:5px;">Best regards,</p>';
+      html += '<p style="font-size:1.3em;font-weight:bold;color:#1a237e;margin-top:5px;">Dr. NK Bhat Skill Lab Quiz Team</p>';
+      html += '</div>';
+      html += '<div style="margin-top:16px;font-size:0.95em;color:#777;text-align:center;font-style:italic;">[final v5]</div>';
       html += '</div>';
       html += '</div>';
 
@@ -353,7 +360,7 @@ exports.sendQuizResultEmail = onCall(
             totalQuestions: normalizedDetails.length,
             answeredCount,
             unansweredCount,
-            emailVersion: "final v3",
+            emailVersion: "final v5",
             dataSource: frontendDetailedResults?.length > 0 ? "frontend" : "firestore"
           }
         };
