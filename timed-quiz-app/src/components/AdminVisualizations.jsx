@@ -99,7 +99,7 @@ const AdminVisualizations = ({ submissions, onClose }) => {
             ← Back to Dashboard
           </button>
           <h2 className="text-2xl sm:text-3xl font-bold text-blue-800 mb-6 sm:mb-8 mt-2 text-center">
-            Quiz Data Visualizations
+            Test Data Visualizations
           </h2>
         </div>
         {/* Mobile disclaimer */}

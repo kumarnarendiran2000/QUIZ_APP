@@ -20,7 +20,7 @@ const ResultPage = ({
   const [correctAnswers, setCorrectAnswers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
-  const [emailError, setEmailError] = useState("");
+  // Removed unused emailError state
   const [emailAlreadySent, setEmailAlreadySent] = useState(false);
   const [showToast, setShowToast] = useState(false);
   const [toastType, setToastType] = useState("info"); // 'success' | 'error' | 'info'
@@ -37,7 +37,7 @@ const ResultPage = ({
           setCorrectAnswers(metadataSnap.data().correctAnswers);
         } else {
           setFetchError(
-            "Quiz metadata not found. Please contact the administrator."
+            "Test metadata not found. Please contact the administrator."
           );
           return;
         }
@@ -57,7 +57,7 @@ const ResultPage = ({
       } catch (error) {
         console.error("Error fetching data:", error);
         setFetchError(
-          "Failed to load quiz metadata. Please check your connection or try again later."
+          "Failed to load test metadata. Please check your connection or try again later."
         );
       } finally {
         setLoading(false); // Done loading
@@ -102,7 +102,7 @@ const ResultPage = ({
           total: questions.length,
           score: correct,
         });
-        console.log("Quiz result email sent successfully.");
+        console.log("Test result email sent successfully.");
         // Wait 5 seconds to allow backend to update flag
         setTimeout(() => {
           setShowToast(true);
@@ -121,9 +121,7 @@ const ResultPage = ({
             "Oops! We couldn’t send your test results email due to a temporary issue. Please refresh and re-login to try again. The email will be retriggered automatically when you relogin and you will land on this page."
           );
         }, 5000);
-        setEmailError(
-          "Failed to send test result email. Please check your connection or try again later."
-        );
+        // No need to set emailError, toast already handles user feedback for email failure.
       }
     };
     // Only send email when results are ready AND email hasn't been sent before
@@ -209,11 +207,7 @@ const ResultPage = ({
         </div>
       )}
       {/* ...existing code... */}
-      {emailError && (
-        <div className="mb-4 text-center text-red-600 font-semibold">
-          {emailError}
-        </div>
-      )}
+      {/* Removed unused emailError display */}
       <h2 className="text-3xl font-bold mb-6 text-gray-800 border-b pb-3 text-center bg-gray-50 p-4 rounded-lg shadow-sm">
         🎯 Your Results {testMode === "pre" ? "(Pre-Test)" : "(Post-Test)"}
       </h2>
