@@ -190,13 +190,24 @@ exports.sendQuizResultEmail = onCall(
       text += 'Time Taken: ' + (quizDuration || '-') + '\n\n';
       text += 'Best regards,\nDr. NK Bhat Skill Lab Quiz Team\n';
 
+      // Format the date in IST (Asia/Kolkata)
+      const istDate = new Date().toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+
       const msg = {
         to: email,
         from: {
           name: "Dr. NK Bhat Skill Lab Quiz Team",
           email: "noreply@dr-nk-bhat-skill-lab-test-app.pro",
         },
-        subject: 'Your ' + testType + ' Quiz Results (' + new Date().toLocaleString() + ')',
+        subject: 'Your ' + testType + ' Quiz Results (' + istDate + ' IST)',
         html: html,
         text: text, // Add the plain-text version.
       };
