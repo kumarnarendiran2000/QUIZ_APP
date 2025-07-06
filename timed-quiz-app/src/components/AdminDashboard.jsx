@@ -280,123 +280,135 @@ const AdminDashboard = () => {
             No submissions found yet.
           </p>
         ) : (
-          <div ref={tableRef} className="overflow-x-auto border rounded-md">
-            <table className="min-w-full text-sm sm:text-base text-left print:text-xs">
-              <thead className="bg-gray-100 text-gray-700 uppercase font-semibold">
-                <tr>
-                  <th className="px-2 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selectAll}
-                      onChange={handleSelectAll}
-                      aria-label="Select all"
-                    />
-                  </th>
-                  <th className="px-4 py-3">S. No</th>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Registration Number</th>
-                  <th className="px-4 py-3">Email</th>
-                  <th className="px-4 py-3">Mobile</th>
-                  <th className="px-4 py-3">Answered</th>
-                  <th className="px-4 py-3">Unanswered</th>
-                  <th className="px-4 py-3 font-bold text-blue-700 bg-blue-50">
-                    Test Mode (Per User)
-                  </th>
-                  <th className="px-4 py-3">Score</th>
-                  <th className="px-4 py-3 text-green-700">Correct</th>
-                  <th className="px-4 py-3 text-red-700">Wrong</th>
-                  <th className="px-4 py-3">Time Taken</th>
-                  <th className="px-4 py-3">Completed At</th>
-                  <th className="px-4 py-3">Tab Switches</th>
-                  <th className="px-4 py-3">Copy Attempts</th>
-                  <th className="px-4 py-3 font-bold text-purple-700 bg-purple-50">
-                    Email Sent
-                  </th>
-                  <th className="px-4 py-3 print:hidden">Action</th>
-                  <th className="px-4 py-3 print:hidden">Delete</th>
-                </tr>
-              </thead>
-              <tbody>
-                {submissions.map((s, idx) => (
-                  <tr
-                    key={s.id}
-                    className={`border-t hover:bg-gray-50 text-gray-800 ${
-                      selectedIds.includes(s.id) ? "bg-blue-50" : ""
-                    }`}
-                  >
-                    <td className="px-2 py-2">
+          <div>
+            {/* Mobile-friendly notice */}
+            <div className="md:hidden mb-4 bg-blue-50 p-4 rounded-lg border border-blue-200 text-sm">
+              <p className="font-medium text-blue-800">
+                Note: This table is scrollable horizontally.
+              </p>
+              <p className="text-blue-600">
+                Swipe left/right to view all columns.
+              </p>
+            </div>
+
+            <div ref={tableRef} className="overflow-x-auto border rounded-md">
+              <table className="min-w-full text-sm sm:text-base text-left print:text-xs whitespace-nowrap md:whitespace-normal">
+                <thead className="bg-gray-100 text-gray-700 uppercase font-semibold">
+                  <tr>
+                    <th className="px-2 py-3">
                       <input
                         type="checkbox"
-                        checked={selectedIds.includes(s.id)}
-                        onChange={() => handleSelectRow(s.id)}
-                        aria-label={`Select row ${idx + 1}`}
+                        checked={selectAll}
+                        onChange={handleSelectAll}
+                        aria-label="Select all"
                       />
-                    </td>
-                    <td className="px-4 py-2">{idx + 1}</td>
-                    <td className="px-4 py-2">{s.name}</td>
-                    <td className="px-4 py-2">{s.regno || "-"}</td>
-                    <td className="px-4 py-2">{s.email}</td>
-                    <td className="px-4 py-2">{s.mobile}</td>
-                    <td className="px-4 py-2">{s.answeredCount}</td>
-                    <td className="px-4 py-2">{s.unansweredCount}</td>
-                    {/* Show per-user test mode from Firestore */}
-                    <td className="px-4 py-2 text-blue-700 font-semibold uppercase">
-                      {s.testModeAtStart || "-"}
-                    </td>
-                    <td className="px-4 py-2 font-semibold">{s.score}</td>
-                    <td className="px-4 py-2 text-green-600">
-                      {s.correctCount}
-                    </td>
-                    <td className="px-4 py-2 text-red-600">{s.wrongCount}</td>
-                    <td className="px-4 py-2">{s.quizDuration || "N/A"}</td>
-                    <td className="px-4 py-2">
-                      {s.completedAt
-                        ? new Date(s.completedAt).toLocaleString()
-                        : "N/A"}
-                    </td>
-                    <td className="px-4 py-2">
-                      {typeof s.tabSwitchCount === "number"
-                        ? s.tabSwitchCount
-                        : 0}
-                    </td>
-                    <td className="px-4 py-2">
-                      {typeof s.copyAttemptCount === "number"
-                        ? s.copyAttemptCount
-                        : 0}
-                    </td>
-                    <td className="px-4 py-2 text-center">
-                      <span
-                        className={`font-medium px-3 py-1 rounded-full text-sm ${
-                          s.emailSent
-                            ? "bg-green-100 text-green-800"
-                            : "bg-yellow-100 text-yellow-800"
-                        }`}
-                      >
-                        {s.emailSent ? "Yes" : "No"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 print:hidden">
-                      <button
-                        onClick={() => setViewing(s)}
-                        className="text-blue-600 underline hover:text-blue-800 text-sm cursor-pointer"
-                      >
-                        View Result
-                      </button>
-                    </td>
-                    <td className="px-4 py-2 print:hidden">
-                      <button
-                        onClick={() =>
-                          setDeleteTarget({ id: s.id, name: s.name })
-                        }
-                        className="text-red-600 underline hover:text-red-800 text-sm cursor-pointer"
-                      >
-                        Delete
-                      </button>
-                    </td>
+                    </th>
+                    <th className="px-4 py-3">S. No</th>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Registration Number</th>
+                    <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3">Mobile</th>
+                    <th className="px-4 py-3">Answered</th>
+                    <th className="px-4 py-3">Unanswered</th>
+                    <th className="px-4 py-3 font-bold text-blue-700 bg-blue-50">
+                      Test Mode (Per User)
+                    </th>
+                    <th className="px-4 py-3">Score</th>
+                    <th className="px-4 py-3 text-green-700">Correct</th>
+                    <th className="px-4 py-3 text-red-700">Wrong</th>
+                    <th className="px-4 py-3">Time Taken</th>
+                    <th className="px-4 py-3">Completed At</th>
+                    <th className="px-4 py-3">Tab Switches</th>
+                    <th className="px-4 py-3">Copy Attempts</th>
+                    <th className="px-4 py-3 font-bold text-purple-700 bg-purple-50">
+                      Email Sent
+                    </th>
+                    <th className="px-4 py-3 print:hidden">Action</th>
+                    <th className="px-4 py-3 print:hidden">Delete</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {submissions.map((s, idx) => (
+                    <tr
+                      key={s.id}
+                      className={`border-t hover:bg-gray-50 text-gray-800 ${
+                        selectedIds.includes(s.id) ? "bg-blue-50" : ""
+                      }`}
+                    >
+                      <td className="px-2 py-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(s.id)}
+                          onChange={() => handleSelectRow(s.id)}
+                          aria-label={`Select row ${idx + 1}`}
+                        />
+                      </td>
+                      <td className="px-4 py-2">{idx + 1}</td>
+                      <td className="px-4 py-2">{s.name}</td>
+                      <td className="px-4 py-2">{s.regno || "-"}</td>
+                      <td className="px-4 py-2">{s.email}</td>
+                      <td className="px-4 py-2">{s.mobile}</td>
+                      <td className="px-4 py-2">{s.answeredCount}</td>
+                      <td className="px-4 py-2">{s.unansweredCount}</td>
+                      {/* Show per-user test mode from Firestore */}
+                      <td className="px-4 py-2 text-blue-700 font-semibold uppercase">
+                        {s.testModeAtStart || "-"}
+                      </td>
+                      <td className="px-4 py-2 font-semibold">{s.score}</td>
+                      <td className="px-4 py-2 text-green-600">
+                        {s.correctCount}
+                      </td>
+                      <td className="px-4 py-2 text-red-600">{s.wrongCount}</td>
+                      <td className="px-4 py-2">{s.quizDuration || "N/A"}</td>
+                      <td className="px-4 py-2">
+                        {s.completedAt
+                          ? new Date(s.completedAt).toLocaleString()
+                          : "N/A"}
+                      </td>
+                      <td className="px-4 py-2">
+                        {typeof s.tabSwitchCount === "number"
+                          ? s.tabSwitchCount
+                          : 0}
+                      </td>
+                      <td className="px-4 py-2">
+                        {typeof s.copyAttemptCount === "number"
+                          ? s.copyAttemptCount
+                          : 0}
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        <span
+                          className={`font-medium px-3 py-1 rounded-full text-sm ${
+                            s.emailSent
+                              ? "bg-green-100 text-green-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {s.emailSent ? "Yes" : "No"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2 print:hidden">
+                        <button
+                          onClick={() => setViewing(s)}
+                          className="text-blue-600 underline hover:text-blue-800 text-sm cursor-pointer"
+                        >
+                          View Result
+                        </button>
+                      </td>
+                      <td className="px-4 py-2 print:hidden">
+                        <button
+                          onClick={() =>
+                            setDeleteTarget({ id: s.id, name: s.name })
+                          }
+                          className="text-red-600 underline hover:text-red-800 text-sm cursor-pointer"
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

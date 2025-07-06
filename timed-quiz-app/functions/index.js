@@ -5,9 +5,27 @@
  */
 
 const {onCall} = require("firebase-functions/v2/https");
-const functions = require("firebase-functions");
-const admin = require("firebase-admin");
-const sgMail = require("@sendgrid/mail");
+      // Construct the HTML body for the email.
+      const testType = isPostTest ? "Post-Test" : "Pre-Test";
+      let html = '';
+      html += '<!DOCTYPE html>';
+      html += '<html>';
+      html += '<head>';
+      html += '<meta charset="UTF-8">';
+      html += '<meta name="viewport" content="width=device-width, initial-scale=1.0">';
+      html += '<title>Quiz Results</title>';
+      html += '<style>';
+      html += '@media screen and (max-width: 600px) {';
+      html += '  .two-column-table { display: block !important; }';
+      html += '  .two-column-cell { display: block !important; width: 100% !important; }';
+      html += '  .badge { display: block !important; margin: 5px 0 !important; }';
+      html += '  .question-item { padding: 10px !important; }';
+      html += '}';
+      html += '</style>';
+      html += '</head>';
+      html += '<body>';
+      html += `<div style="background:#f0f3fa;padding:32px 0;font-family:'Segoe UI',Arial,sans-serif;">`;
+
 
 // Initialize Firebase Admin SDK.
 admin.initializeApp();
@@ -245,10 +263,10 @@ exports.sendQuizResultEmail = onCall(
               <span style="font-size:1.3em;font-weight:600;color:#1a237e;">Quiz Results - ${testType}</span>
             </div>
             
-            <!-- Two-column layout -->
-            <div style="display:table;width:100%;table-layout:fixed;background:#fff;">
+            <!-- Two-column layout with mobile responsiveness -->
+            <div style="display:table;width:100%;table-layout:fixed;background:#fff;" class="two-column-table">
               <!-- Left column: Personal details -->
-              <div style="display:table-cell;width:50%;padding:20px;vertical-align:top;font-size:1.15em;line-height:1.7;border-right:1px solid #e8eaf6;">
+              <div style="display:table-cell;width:50%;padding:20px;vertical-align:top;font-size:1.15em;line-height:1.7;border-right:1px solid #e8eaf6;" class="two-column-cell">
                 <div style="margin-bottom:8px;">
                   <span style="color:#303f9f;font-weight:600;">Name:</span> 
                   <span>${name || "-"}</span>
@@ -263,33 +281,33 @@ exports.sendQuizResultEmail = onCall(
                 </div>
                 <div style="margin-bottom:8px;">
                   <span style="color:#303f9f;font-weight:600;">Email:</span> 
-                  <span>${email || "-"}</span>
+                  <span style="word-break:break-word;">${email || "-"}</span>
                 </div>
               </div>
               
               <!-- Right column: Scores -->
-              <div style="display:table-cell;width:50%;padding:20px;vertical-align:top;font-size:1.15em;line-height:1.7;background:#fafbff;">
+              <div style="display:table-cell;width:50%;padding:20px;vertical-align:top;font-size:1.15em;line-height:1.7;background:#fafbff;" class="two-column-cell">
                 <div style="margin-bottom:10px;">
                   <span style="color:#1a237e;font-weight:600;">Score:</span> 
                   <span style="font-size:1.2em;font-weight:700;color:#2e7d32;">${score} / ${total}</span>
                 </div>
                 
                 <div style="margin-bottom:10px;">
-                  <span style="display:inline-block;background:#e8f5e9;padding:4px 10px;border-radius:15px;margin-right:5px;">
+                  <span style="display:inline-block;background:#e8f5e9;padding:4px 10px;border-radius:15px;margin-right:5px;margin-bottom:5px;" class="badge">
                     <span style="color:#2e7d32;font-weight:600;">✅ Correct:</span> ${correct}
                   </span>
                   
-                  <span style="display:inline-block;background:#ffebee;padding:4px 10px;border-radius:15px;">
+                  <span style="display:inline-block;background:#ffebee;padding:4px 10px;border-radius:15px;margin-bottom:5px;" class="badge">
                     <span style="color:#c62828;font-weight:600;">❌ Wrong:</span> ${wrong}
                   </span>
                 </div>
                 
                 <div style="margin-bottom:10px;">
-                  <span style="display:inline-block;background:#e3f2fd;padding:4px 10px;border-radius:15px;margin-right:5px;">
+                  <span style="display:inline-block;background:#e3f2fd;padding:4px 10px;border-radius:15px;margin-right:5px;margin-bottom:5px;" class="badge">
                     <span style="color:#0d47a1;font-weight:600;">🟦 Answered:</span> ${answeredCount}
                   </span>
                   
-                  <span style="display:inline-block;background:#f5f5f5;padding:4px 10px;border-radius:15px;">
+                  <span style="display:inline-block;background:#f5f5f5;padding:4px 10px;border-radius:15px;margin-bottom:5px;" class="badge">
                     <span style="color:#424242;font-weight:600;">⬜ Unanswered:</span> ${unansweredCount}
                   </span>
                 </div>
@@ -300,10 +318,27 @@ exports.sendQuizResultEmail = onCall(
                 </div>
               </div>
             </div>
+            
+            <!-- Mobile-friendly fallback for email clients that don't support display:table -->
+            <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;">
+              <div style="padding:15px;border-top:1px solid #e8eaf6;margin-top:10px;">
+                <div style="margin-bottom:8px;"><span style="color:#303f9f;font-weight:600;">Name:</span> ${name || "-"}</div>
+                <div style="margin-bottom:8px;"><span style="color:#303f9f;font-weight:600;">Registration Number:</span> ${regno || "-"}</div>
+                <div style="margin-bottom:8px;"><span style="color:#303f9f;font-weight:600;">Mobile:</span> ${mobile || "-"}</div>
+                <div style="margin-bottom:15px;"><span style="color:#303f9f;font-weight:600;">Email:</span> ${email || "-"}</div>
+                
+                <div style="margin-bottom:10px;"><span style="color:#1a237e;font-weight:600;">Score:</span> <span style="font-weight:700;color:#2e7d32;">${score} / ${total}</span></div>
+                <div style="margin-bottom:5px;"><span style="background:#e8f5e9;padding:4px 10px;border-radius:15px;color:#2e7d32;font-weight:600;">✅ Correct: ${correct}</span></div>
+                <div style="margin-bottom:5px;"><span style="background:#ffebee;padding:4px 10px;border-radius:15px;color:#c62828;font-weight:600;">❌ Wrong: ${wrong}</span></div>
+                <div style="margin-bottom:5px;"><span style="background:#e3f2fd;padding:4px 10px;border-radius:15px;color:#0d47a1;font-weight:600;">🟦 Answered: ${answeredCount}</span></div>
+                <div style="margin-bottom:5px;"><span style="background:#f5f5f5;padding:4px 10px;border-radius:15px;color:#424242;font-weight:600;">⬜ Unanswered: ${unansweredCount}</span></div>
+                <div><span style="color:#1a237e;font-weight:600;">⏱️ Time Taken:</span> <span style="color:#0d47a1;">${quizDuration || "-"}</span></div>
+              </div>
+            </div>
           </div>`;
 
       if (isPostTest && normalizedDetails.length > 0) {
-        // Add a thank you message before the question details, similar to frontend
+        // Add a thank you message before the question details, similar to frontend (with mobile-friendly font sizes)
         html += `<div style="margin:28px 0;padding:20px;text-align:center;background:#e8f5e9;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,0.05);border:1px solid #c8e6c9;">
           <h3 style="font-size:1.6em;color:#2e7d32;margin-bottom:10px;font-weight:bold;">Thank You!</h3>
           <p style="font-size:1.2em;color:#33691e;margin-bottom:8px;">Thank you for attending the post-test quiz. Your responses have been recorded.</p>
@@ -340,7 +375,7 @@ exports.sendQuizResultEmail = onCall(
               rowBg = '#ffebee'; // Red background for wrong answers (red-50)
             }
             
-            html += '<li style="margin-bottom:22px;line-height:1.7;background:' + rowBg + ';padding:16px 14px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.08);font-size:1.1em;">';
+            html += '<li style="margin-bottom:22px;line-height:1.7;background:' + rowBg + ';padding:16px 14px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,0.08);font-size:1.1em;word-break:break-word;" class="question-item">';
             html += '<div style="font-weight:bold;color:#283593;font-size:1.1em;margin-bottom:8px;border-bottom:1px solid #e0e0e0;padding-bottom:6px;">Q' + (i + 1) + ': ' + (q.question || '-') + '</div>';
             
             if (!q.wasAnswered) {
@@ -350,12 +385,12 @@ exports.sendQuizResultEmail = onCall(
             } else if (q.isCorrect) {
               html += '<div style="margin-top:10px;"><b style="color:#424242;">Status:</b> <span style="color:#2e7d32;font-weight:bold;">🟢 Answered</span></div>';
               html += '<div><b style="color:#424242;">Your Answer:</b> <span style="color:#2e7d32;font-weight:500;">' + (q.userAnswer || '-') + '</span></div>';
-              html += '<div style="color:#2e7d32;font-weight:bold;background:#e8f5e9;display:inline-block;padding:4px 10px;margin-top:6px;border-radius:4px;">✅ Correct</div>';
+              html += '<div style="color:#2e7d32;font-weight:bold;background:#e8f5e9;display:inline-block;padding:4px 10px;margin-top:6px;border-radius:4px;" class="answer-status">✅ Correct</div>';
             } else {
               html += '<div style="margin-top:10px;"><b style="color:#424242;">Status:</b> <span style="color:#c62828;font-weight:bold;">🟠 Answered</span></div>';
               html += '<div><b style="color:#424242;">Your Answer:</b> <span style="color:#c62828;font-weight:500;">' + (q.userAnswer || '-') + '</span></div>';
               html += '<div><b style="color:#424242;">Correct Answer:</b> <span style="color:#0d47a1;font-weight:500;">' + (q.correctAnswer || '-') + '</span></div>';
-              html += '<div style="color:#c62828;font-weight:bold;background:#ffebee;display:inline-block;padding:4px 10px;margin-top:6px;border-radius:4px;">❌ Wrong</div>';
+              html += '<div style="color:#c62828;font-weight:bold;background:#ffebee;display:inline-block;padding:4px 10px;margin-top:6px;border-radius:4px;" class="answer-status">❌ Wrong</div>';
             }
             html += '</li>';
           });
@@ -377,9 +412,11 @@ exports.sendQuizResultEmail = onCall(
       html += '<p style="font-size:1.2em;color:#333;margin-bottom:5px;">Best regards,</p>';
       html += '<p style="font-size:1.3em;font-weight:bold;color:#1a237e;margin-top:5px;">Dr. NK Bhat Skill Lab Quiz Team</p>';
       html += '</div>';
-      html += '<div style="margin-top:16px;font-size:0.95em;color:#777;text-align:center;font-style:italic;">[final v7]</div>';
+      html += '<div style="margin-top:16px;font-size:0.95em;color:#777;text-align:center;font-style:italic;">[final v8 mobile-optimized]</div>';
       html += '</div>';
       html += '</div>';
+      html += '</body>';
+      html += '</html>';
 
       // Create a plain-text version of the email for better deliverability.
       let text = '';
@@ -438,7 +475,7 @@ exports.sendQuizResultEmail = onCall(
             totalQuestions: normalizedDetails.length,
             answeredCount,
             unansweredCount,
-            emailVersion: "final v7",
+            emailVersion: "final v8 mobile-optimized",
             dataSource: frontendDetailedResults?.length > 0 ? "frontend" : "firestore",
             emailSent: true
           }
