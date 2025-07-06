@@ -6,7 +6,7 @@ import QuizPage from "./components/QuizPage";
 import ResultPage from "./components/ResultPage";
 import AdminDashboard from "./components/AdminDashboard";
 import Layout from "./components/Layout";
-import { db, sendQuizResultEmail } from "./utils/firebase";
+import { db } from "./utils/firebase";
 import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { questions } from "./data/questions";
 
@@ -234,33 +234,6 @@ const App = () => {
 
       setDetailedResults(detailedResults);
       setQuizDuration(quizDuration);
-
-      // --- Send quiz result email via Firebase Function ---
-      try {
-        console.log("Calling sendQuizResultEmail function...");
-
-        await sendQuizResultEmail({
-          name: userInfo.name,
-          email: user.email,
-          score: correctCount,
-          correct: correctCount,
-          wrong: questions.length - correctCount,
-          total: questions.length,
-          details: detailedResults, // Make sure this is populated
-          isPostTest: true, // Or determine this dynamically
-        });
-
-        console.log("Function call successful!");
-      } catch (err) {
-        // Enhanced error logging with details to help diagnose the issue
-        console.error("Failed to send quiz result email:", {
-          message: err.message,
-          code: err.code,
-          details: err.details,
-          stack: err.stack,
-        });
-      }
-      // --- End email trigger ---
     }
 
     setStep("result");

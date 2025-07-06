@@ -40,36 +40,29 @@ exports.sendQuizResultEmail = onCall(
       }
 
 
-      // Extract data from request
-      let {
-        email,
-        name,
-        isPostTest,
-        score,
-        correct,
-        wrong,
-        total,
-        details,
-        regno,
-        mobile,
-        quizDuration,
-      } = request.data;
-
-      // If any of the user details are missing, fetch from Firestore
-      if (!email || !name || !regno || !mobile || !quizDuration) {
-        try {
-          const userDoc = await admin.firestore().collection("quiz_responses").doc(request.auth.uid).get();
-          if (userDoc.exists) {
-            const data = userDoc.data();
-            email = email || data.email || "";
-            name = name || data.name || "";
-            regno = regno || data.regno || "";
-            mobile = mobile || data.mobile || "";
-            quizDuration = quizDuration || data.quizDuration || "";
-          }
-        } catch (e) {
-          console.error("Failed to fetch user details from Firestore:", e);
+      // Always fetch quiz response from Firestore for reliability
+      let email = "", name = "", regno = "", mobile = "", quizDuration = "", isPostTest = false, score = 0, correct = 0, wrong = 0, total = 0, details = [];
+      try {
+        const userDoc = await admin.firestore().collection("quiz_responses").doc(request.auth.uid).get();
+        if (userDoc.exists) {
+          const data = userDoc.data();
+          email = data.email || "";
+          name = data.name || "";
+          regno = data.regno || "";
+          mobile = data.mobile || "";
+          quizDuration = data.quizDuration || "";
+          isPostTest = data.isPostTest !== undefined ? data.isPostTest : true;
+          score = data.score !== undefined ? data.score : (data.correctCount !== undefined ? data.correctCount : 0);
+          correct = data.correct !== undefined ? data.correct : (data.correctCount !== undefined ? data.correctCount : 0);
+          wrong = data.wrong !== undefined ? data.wrong : (data.wrongCount !== undefined ? data.wrongCount : 0);
+          total = data.total !== undefined ? data.total : (Array.isArray(data.answers) ? data.answers.length : 0);
+          details = data.detailedResults || data.details || [];
+        } else {
+          throw new functions.https.HttpsError("not-found", "Quiz response not found in Firestore.");
         }
+      } catch (e) {
+        console.error("Failed to fetch quiz response from Firestore:", e);
+        throw new functions.https.HttpsError("internal", "Failed to fetch quiz response from Firestore.");
       }
 
       // Calculate answered and unanswered counts

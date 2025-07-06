@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { questions } from "../data/questions";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "../utils/firebase";
+import { db, sendQuizResultEmail } from "../utils/firebase";
 
 const ResultPage = ({
   userInfo,
@@ -19,25 +19,64 @@ const ResultPage = ({
 
   const [correctAnswers, setCorrectAnswers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   useEffect(() => {
     const fetchCorrectAnswers = async () => {
-      const ref = doc(db, "quiz_metadata", "default");
-      const snap = await getDoc(ref);
-      if (snap.exists()) {
-        setCorrectAnswers(snap.data().correctAnswers);
+      try {
+        const ref = doc(db, "quiz_metadata", "default");
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+          setCorrectAnswers(snap.data().correctAnswers);
+        } else {
+          setFetchError(
+            "Quiz metadata not found. Please contact the administrator."
+          );
+        }
+      } catch {
+        setFetchError(
+          "Failed to load quiz metadata. Please check your connection or try again later."
+        );
+      } finally {
+        setLoading(false); // Done loading
       }
-      setLoading(false); // Done loading
     };
-
     fetchCorrectAnswers();
   }, []);
+
+  useEffect(() => {
+    // Send email for both pre and post test after results are loaded
+    const sendEmail = async () => {
+      try {
+        await sendQuizResultEmail(); // Backend handles content based on testMode
+      } catch {
+        setEmailError(
+          "Failed to send quiz result email. Please check your connection or try again later."
+        );
+      }
+    };
+    if (
+      (testMode === "post" || testMode === "pre") &&
+      detailedResults &&
+      detailedResults.length > 0
+    ) {
+      sendEmail();
+    }
+    // eslint-disable-next-line
+  }, [testMode, detailedResults]);
 
   if (loading) {
     return (
       <div className="text-center mt-10 text-lg text-gray-600">
         Preparing your results...
       </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="text-center mt-10 text-lg text-red-600">{fetchError}</div>
     );
   }
 
@@ -56,6 +95,11 @@ const ResultPage = ({
 
   return (
     <div className="max-w-5xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
+      {emailError && (
+        <div className="mb-4 text-center text-red-600 font-semibold">
+          {emailError}
+        </div>
+      )}
       <h2 className="text-3xl font-bold mb-4 text-gray-800 border-b pb-2">
         🎯 Your Quiz Results
       </h2>
