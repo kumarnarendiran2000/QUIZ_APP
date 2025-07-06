@@ -16,7 +16,7 @@ admin.initializeApp();
 if (!process.env.SENDGRID_API_KEY) {
   console.error("FATAL ERROR: SENDGRID_API_KEY is not set.");
 }
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 /**
  * Sends a quiz result email to a user.
