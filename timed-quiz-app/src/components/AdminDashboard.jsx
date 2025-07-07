@@ -5,13 +5,13 @@ import {
   setTestMode as saveTestMode,
 } from "../utils/quizSettings";
 import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "../utils/firebase";
+import { db, sendQuizResultEmail } from "../utils/firebase";
 import { questions } from "../data/questions";
 import { exportSubmissionsToExcel } from "../utils/exportToExcel";
 import { exportSubmissionsToPDF } from "../utils/exportToPDF";
 import MobileSnackbar from "./MobileSnackbar";
 import AdminVisualizations from "./AdminVisualizations";
-import { doc, deleteDoc } from "firebase/firestore";
+import { doc, deleteDoc, getDoc } from "firebase/firestore";
 
 const AdminDashboard = () => {
   // Export to Excel handler (must be inside the component to access state)
@@ -29,6 +29,165 @@ const AdminDashboard = () => {
       setTimeout(() => setShowMobileSnackbar(false), 15000); // Increased to 15 seconds
     }
   };
+
+  // Table navigation controls state
+  const [showScrollButtons, setShowScrollButtons] = useState(() => {
+    // Get from localStorage if available, default to true
+    const saved = localStorage.getItem("showScrollButtons");
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+
+  // Save preference to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem(
+      "showScrollButtons",
+      JSON.stringify(showScrollButtons)
+    );
+  }, [showScrollButtons]);
+
+  // Keyboard shortcut handler (Ctrl+N to toggle navigation controls)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.key === "n") {
+        e.preventDefault(); // Prevent browser's "new window" shortcut
+        setShowScrollButtons((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  // Mobile screen detection
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if screen is mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Adjust scroll amount based on screen size
+  const scrollAmount = isMobile ? 150 : 300; // Less for mobile
+
+  // Scroll to table function
+  const scrollToTable = () => {
+    if (tableRef.current) {
+      tableRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  // Scroll intervals for continuous scrolling
+  const [horizontalScrollInterval, setHorizontalScrollInterval] =
+    useState(null);
+  const [verticalScrollInterval, setVerticalScrollInterval] = useState(null);
+
+  // Scroll table functions with smooth behavior
+  const scrollTableRight = () => {
+    if (tableRef.current) {
+      tableRef.current.scrollBy({
+        left: scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  const scrollTableLeft = () => {
+    if (tableRef.current) {
+      tableRef.current.scrollBy({
+        left: -scrollAmount,
+        behavior: "smooth",
+      });
+    }
+  };
+
+  // Scroll page functions
+  const scrollPageDown = () => {
+    window.scrollBy({
+      top: scrollAmount,
+      behavior: "smooth",
+    });
+  };
+
+  const scrollPageUp = () => {
+    window.scrollBy({
+      top: -scrollAmount,
+      behavior: "smooth",
+    });
+  };
+
+  // Start continuous horizontal scrolling
+  const startHorizontalScroll = (direction) => {
+    // Clear any existing interval first
+    clearInterval(horizontalScrollInterval);
+
+    // Execute once immediately
+    if (direction === "right") {
+      scrollTableRight();
+    } else {
+      scrollTableLeft();
+    }
+
+    // Set up interval for continuous scrolling (every 250ms)
+    const interval = setInterval(() => {
+      if (direction === "right") {
+        scrollTableRight();
+      } else {
+        scrollTableLeft();
+      }
+    }, 250);
+
+    setHorizontalScrollInterval(interval);
+  };
+
+  // Start continuous vertical scrolling
+  const startVerticalScroll = (direction) => {
+    // Clear any existing interval first
+    clearInterval(verticalScrollInterval);
+
+    // Execute once immediately
+    if (direction === "down") {
+      scrollPageDown();
+    } else {
+      scrollPageUp();
+    }
+
+    // Set up interval for continuous scrolling
+    const interval = setInterval(() => {
+      if (direction === "down") {
+        scrollPageDown();
+      } else {
+        scrollPageUp();
+      }
+    }, 250);
+
+    setVerticalScrollInterval(interval);
+  };
+
+  // Stop continuous scrolling
+  const stopHorizontalScroll = () => {
+    clearInterval(horizontalScrollInterval);
+    setHorizontalScrollInterval(null);
+  };
+
+  const stopVerticalScroll = () => {
+    clearInterval(verticalScrollInterval);
+    setVerticalScrollInterval(null);
+  };
+
+  // Cleanup intervals on unmount
+  useEffect(() => {
+    return () => {
+      clearInterval(horizontalScrollInterval);
+      clearInterval(verticalScrollInterval);
+    };
+  }, [horizontalScrollInterval, verticalScrollInterval]);
+
   // Test mode state (pre/post), loaded from Firestore
   const [testMode, setTestMode] = useState("post");
   const [testModeLoading, setTestModeLoading] = useState(true);
@@ -117,6 +276,17 @@ const AdminDashboard = () => {
     setDeleteLoading(true);
     try {
       await deleteDoc(doc(db, "quiz_responses", deleteTarget.id));
+
+      // Also remove the deleted ID from selectedIds if it was selected
+      if (selectedIds.includes(deleteTarget.id)) {
+        setSelectedIds((prev) => prev.filter((id) => id !== deleteTarget.id));
+
+        // If we're deleting the last selected item, also update selectAll state
+        if (selectedIds.length === 1) {
+          setSelectAll(false);
+        }
+      }
+
       setDeleteTarget(null);
     } catch (err) {
       alert("Failed to delete record: " + err.message);
@@ -171,21 +341,267 @@ const AdminDashboard = () => {
   // Visualizations modal state
   const [showVisualizations, setShowVisualizations] = useState(false);
 
+  // Email sending state
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailUserInProgress, setEmailUserInProgress] = useState(null);
+  const [emailToast, setEmailToast] = useState({
+    show: false,
+    type: "",
+    message: "",
+  });
+
+  // Handle sending email manually for a specific user
+  const handleSendEmail = async (user) => {
+    if (!user || emailSending) return;
+
+    setEmailSending(true);
+    setEmailUserInProgress(user.id);
+
+    // Show info toast with longer timeout for long-running operations
+    setEmailToast({
+      show: true,
+      type: "info",
+      message: `Sending email to ${user.name} (${user.email})...`,
+    });
+
+    // Auto-dismiss info toast after 15 seconds if operation takes too long
+    const infoToastTimeout = setTimeout(() => {
+      setEmailToast((prev) => {
+        // Only clear if it's still the info toast
+        if (prev.type === "info") {
+          return { ...prev, show: false };
+        }
+        return prev;
+      });
+    }, 15000);
+
+    try {
+      console.log(
+        "Manually triggering email for user:",
+        user.name,
+        "with ID:",
+        user.id
+      );
+
+      // Get correct answers from metadata
+      const metadataRef = doc(db, "quiz_metadata", "default");
+      const metadataSnap = await getDoc(metadataRef);
+
+      if (!metadataSnap.exists()) {
+        throw new Error("Quiz metadata not found");
+      }
+
+      const correctAnswers = metadataSnap.data().correctAnswers || [];
+
+      // Extract the data we need to send from user record
+      const answers = user.answers || [];
+      const testMode = user.testModeAtStart || "post";
+      const quizDuration = user.quizDuration || "N/A";
+
+      // Normalize results data similar to ResultPage.jsx
+      const normalizedResults = questions.map((q, i) => {
+        const selected = answers[i];
+        const correct = correctAnswers[i];
+        const isCorrect = selected === correct;
+        const wasAnswered = typeof selected === "number";
+        return {
+          question: q.question,
+          userAnswer: wasAnswered ? q.options[selected] : null,
+          correctAnswer: q.options[correct],
+          isCorrect,
+          wasAnswered,
+          topic: q.topic || "Other",
+        };
+      });
+
+      // Calculate counts for sending
+      const correct = normalizedResults.filter((r) => r.isCorrect).length;
+      const wrong = normalizedResults.length - correct;
+      const total = questions.length;
+
+      // Send the email - Add userId, userEmail, and userName to identify which user's email to send
+      await sendQuizResultEmail({
+        userId: user.id, // This is critical - tells the Cloud Function which user's quiz results to use
+        userEmail: user.email, // Pass email directly for double-checking
+        userName: user.name, // Pass name for personalization
+        answers,
+        detailedResults: normalizedResults,
+        correctAnswers,
+        allQuestions: questions,
+        quizDurationFromFrontend: quizDuration,
+        testModeFromFrontend: testMode,
+        correct,
+        wrong,
+        total,
+        score: correct,
+      });
+
+      // Success state
+      setTimeout(() => {
+        // Clear any previous timeout for the info toast
+        clearTimeout(infoToastTimeout);
+
+        setEmailToast({
+          show: true,
+          type: "success",
+          message: `Email sent successfully to ${user.name} (${user.email})`,
+        });
+
+        // Auto dismiss success toast after 8 seconds
+        setTimeout(() => {
+          setEmailToast((prev) => ({ ...prev, show: false }));
+        }, 8000);
+      }, 500);
+    } catch (error) {
+      console.error("Error sending email manually:", error);
+
+      // Clear any previous timeout for the info toast
+      clearTimeout(infoToastTimeout);
+
+      setEmailToast({
+        show: true,
+        type: "error",
+        message: `Failed to send email to ${user.name} (${user.email}): ${error.message}`,
+      });
+
+      // Auto dismiss error toast after 5 seconds
+      setTimeout(() => {
+        setEmailToast((prev) => ({ ...prev, show: false }));
+      }, 5000);
+    } finally {
+      setEmailSending(false);
+      setEmailUserInProgress(null);
+    }
+  };
+
   return (
     <>
       <MobileSnackbar
         open={showMobileSnackbar}
         message="PDF saved to Downloads. Open with a PDF viewer for best experience. For best results, try exporting from a desktop browser."
         onClose={() => setShowMobileSnackbar(false)}
-      />
+      />{" "}
+      {/* Sticky Navigation Buttons */}
+      <div className="fixed top-20 right-4 z-50">
+        <button
+          onClick={() => setShowScrollButtons((prev) => !prev)}
+          className="bg-gray-800 hover:bg-gray-900 text-white text-xs md:text-sm px-3 py-2 rounded-full shadow-lg flex items-center"
+          title={`${
+            showScrollButtons ? "Hide" : "Show"
+          } Navigation Controls (Ctrl+N)`}
+        >
+          {showScrollButtons ? "Hide Controls" : "Show Controls"}
+        </button>
+      </div>
+      {showScrollButtons && (
+        <>
+          {/* Horizontal Navigation */}
+          <div className="fixed right-4 bottom-24 z-50 flex flex-col gap-2">
+            <button
+              onMouseDown={() => startHorizontalScroll("left")}
+              onMouseUp={stopHorizontalScroll}
+              onMouseLeave={stopHorizontalScroll}
+              onTouchStart={() => startHorizontalScroll("left")}
+              onTouchEnd={stopHorizontalScroll}
+              className="bg-blue-700 hover:bg-blue-800 text-white w-10 h-10 md:w-12 md:h-12 rounded-full shadow-lg flex items-center justify-center text-xl"
+              title="Scroll Table Left (hold for continuous scroll)"
+            >
+              ←
+            </button>
+            <button
+              onMouseDown={() => startHorizontalScroll("right")}
+              onMouseUp={stopHorizontalScroll}
+              onMouseLeave={stopHorizontalScroll}
+              onTouchStart={() => startHorizontalScroll("right")}
+              onTouchEnd={stopHorizontalScroll}
+              className="bg-blue-700 hover:bg-blue-800 text-white w-10 h-10 md:w-12 md:h-12 rounded-full shadow-lg flex items-center justify-center text-xl"
+              title="Scroll Table Right (hold for continuous scroll)"
+            >
+              →
+            </button>
+          </div>
+
+          {/* Vertical Navigation */}
+          <div className="fixed right-4 bottom-4 z-50 flex gap-2">
+            <button
+              onMouseDown={() => startVerticalScroll("up")}
+              onMouseUp={stopVerticalScroll}
+              onMouseLeave={stopVerticalScroll}
+              onTouchStart={() => startVerticalScroll("up")}
+              onTouchEnd={stopVerticalScroll}
+              className="bg-green-600 hover:bg-green-700 text-white w-10 h-10 md:w-12 md:h-12 rounded-full shadow-lg flex items-center justify-center text-xl"
+              title="Scroll Page Up (hold for continuous scroll)"
+            >
+              ↑
+            </button>
+            <button
+              onMouseDown={() => startVerticalScroll("down")}
+              onMouseUp={stopVerticalScroll}
+              onMouseLeave={stopVerticalScroll}
+              onTouchStart={() => startVerticalScroll("down")}
+              onTouchEnd={stopVerticalScroll}
+              className="bg-green-600 hover:bg-green-700 text-white w-10 h-10 md:w-12 md:h-12 rounded-full shadow-lg flex items-center justify-center text-xl"
+              title="Scroll Page Down (hold for continuous scroll)"
+            >
+              ↓
+            </button>
+          </div>
+
+          {/* Quick access to table */}
+          <div className="fixed left-4 bottom-4 z-50">
+            <button
+              onClick={scrollToTable}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 md:px-4 md:py-2 rounded-full shadow-lg flex items-center text-xs md:text-sm"
+              title="Jump to Table"
+            >
+              <span className="mr-1 text-lg">📋</span> Go to Table
+            </button>
+          </div>
+        </>
+      )}
+      {/* Email Status Toast - Centered on mobile, right-aligned on desktop */}
+      {emailToast.show && (
+        <div
+          className={`fixed top-4 z-50 px-6 py-4 rounded-lg shadow-lg text-white flex items-center justify-between gap-4 transition-all duration-300 animate-fadeIn md:right-4 left-1/2 md:left-auto md:transform-none transform -translate-x-1/2 md:translate-x-0 ${
+            emailToast.type === "success"
+              ? "bg-green-600"
+              : emailToast.type === "error"
+              ? "bg-red-600"
+              : "bg-blue-600"
+          }`}
+          style={{ maxWidth: "90%", width: "400px" }}
+        >
+          <span className="flex-1">{emailToast.message}</span>
+          <button
+            aria-label="Close notification"
+            className="ml-4 text-white text-2xl font-bold focus:outline-none hover:opacity-80"
+            style={{
+              lineHeight: 1,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+            }}
+            onClick={() => setEmailToast((prev) => ({ ...prev, show: false }))}
+          >
+            &times;
+          </button>
+        </div>
+      )}
       <div className="max-w-8xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm">
         {/* Enhanced Admin Dashboard Heading */}
         <h2
-          className="text-xl font-semibold text-blue-800 tracking-wide mb-8 bg-blue-50 border border-blue-200 px-6 py-3 rounded-xl shadow-lg w-full flex justify-center items-center mx-auto"
+          className="text-xl font-semibold text-blue-800 tracking-wide mb-4 bg-blue-50 border border-blue-200 px-6 py-3 rounded-xl shadow-lg w-full flex justify-center items-center mx-auto"
           style={{ maxWidth: "420px" }}
         >
           🧾 Admin Dashboard
         </h2>
+
+        {/* Navigation Controls Info */}
+        <div className="hidden md:block mb-4 text-center">
+          <p className="text-xs text-gray-600 italic">
+            Tip: Press and hold the navigation buttons for continuous scrolling
+          </p>
+        </div>
         {/* Test Mode Selector (hidden on print, highlighted, at top) */}
         <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center gap-2 print:hidden bg-yellow-100 border-2 border-yellow-400 rounded-lg p-4 shadow">
           <label
@@ -287,7 +703,8 @@ const AdminDashboard = () => {
                 Note: This table is scrollable horizontally.
               </p>
               <p className="text-blue-600">
-                Swipe left/right to view all columns.
+                Swipe left/right to view all columns or use the navigation
+                controls available.
               </p>
             </div>
 
@@ -322,6 +739,9 @@ const AdminDashboard = () => {
                     <th className="px-4 py-3">Copy Attempts</th>
                     <th className="px-4 py-3 font-bold text-purple-700 bg-purple-50">
                       Email Sent
+                    </th>
+                    <th className="px-4 py-3 font-bold text-indigo-700 bg-indigo-50 print:hidden">
+                      Email Action
                     </th>
                     <th className="px-4 py-3 print:hidden">Action</th>
                     <th className="px-4 py-3 print:hidden">Delete</th>
@@ -386,12 +806,31 @@ const AdminDashboard = () => {
                           {s.emailSent ? "Yes" : "No"}
                         </span>
                       </td>
+                      <td className="px-4 py-2 print:hidden text-center">
+                        <button
+                          onClick={() => handleSendEmail(s)}
+                          disabled={
+                            emailSending && emailUserInProgress === s.id
+                          }
+                          className={`px-3 py-1 rounded-md text-sm font-medium ${
+                            emailSending && emailUserInProgress === s.id
+                              ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                              : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200 cursor-pointer"
+                          }`}
+                        >
+                          {emailSending && emailUserInProgress === s.id
+                            ? "Sending..."
+                            : s.emailSent
+                            ? "Resend Email"
+                            : "Send Email"}
+                        </button>
+                      </td>
                       <td className="px-4 py-2 print:hidden">
                         <button
                           onClick={() => setViewing(s)}
-                          className="text-blue-600 underline hover:text-blue-800 text-sm cursor-pointer"
+                          className="px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md text-sm font-medium transition-colors duration-200 border border-blue-200 shadow-sm"
                         >
-                          View Result
+                          📊 View Result
                         </button>
                       </td>
                       <td className="px-4 py-2 print:hidden">
@@ -399,9 +838,9 @@ const AdminDashboard = () => {
                           onClick={() =>
                             setDeleteTarget({ id: s.id, name: s.name })
                           }
-                          className="text-red-600 underline hover:text-red-800 text-sm cursor-pointer"
+                          className="px-3 py-1 bg-red-100 text-red-700 hover:bg-red-200 rounded-md text-sm font-medium transition-colors duration-200 border border-red-200 shadow-sm"
                         >
-                          Delete
+                          🗑️ Delete
                         </button>
                       </td>
                     </tr>
@@ -430,58 +869,137 @@ const AdminDashboard = () => {
               &nbsp;|&nbsp; ⬜ Unanswered:{" "}
               <strong>{viewing.unansweredCount}</strong>
             </p>
-            <p className="text-gray-700 mb-4">
-              📧 Email Status:{" "}
-              <span
-                className={`font-semibold px-3 py-1 rounded-lg ${
-                  viewing.emailSent
-                    ? "bg-green-100 text-green-800"
-                    : "bg-yellow-100 text-yellow-800"
-                }`}
-              >
-                {viewing.emailSent ? "Sent ✓" : "Not Sent"}
-              </span>
-              {viewing.emailSentAt && (
-                <span className="text-xs ml-2 text-gray-500">
-                  ({new Date(viewing.emailSentAt.toDate()).toLocaleString()})
-                </span>
-              )}
-            </p>
-
-            {viewing.detailedResults?.map((r, index) => {
-              const q = questions[r.q - 1];
-              return (
-                <div
-                  key={index}
-                  className={`mb-4 p-4 rounded-md border ${
-                    r.isCorrect
-                      ? "border-green-300 bg-green-50"
-                      : "border-red-300 bg-red-50"
+            <div className="flex flex-wrap gap-4 items-center mb-4">
+              <div className="flex-grow">
+                <span className="font-bold">📧 Email Status:</span>{" "}
+                <span
+                  className={`font-semibold px-3 py-1 rounded-lg ${
+                    viewing.emailSent
+                      ? "bg-green-100 text-green-800"
+                      : "bg-yellow-100 text-yellow-800"
                   }`}
                 >
-                  <h4 className="font-semibold mb-2 text-gray-800">
-                    Q{r.q}. {q.question}
-                  </h4>
-                  {q.options.map((opt, i) => (
-                    <div key={i} className="ml-4">
-                      <span
-                        className={`text-sm ${
-                          r.correct === i
-                            ? "font-bold text-green-700"
-                            : r.selected === i
-                            ? "text-red-500"
-                            : "text-gray-700"
-                        }`}
-                      >
-                        {i + 1}. {opt}
-                        {r.correct === i && " ✅"}
-                        {r.selected === i && r.correct !== i && " ❌"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
+                  {viewing.emailSent ? "Sent ✓" : "Not Sent"}
+                </span>
+                {viewing.emailSentAt && (
+                  <span className="text-xs ml-2 text-gray-500">
+                    ({new Date(viewing.emailSentAt.toDate()).toLocaleString()})
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => handleSendEmail(viewing)}
+                disabled={emailSending && emailUserInProgress === viewing.id}
+                className={`px-4 py-2 rounded-lg text-sm font-medium ${
+                  emailSending && emailUserInProgress === viewing.id
+                    ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                    : "bg-indigo-500 text-white hover:bg-indigo-600 cursor-pointer"
+                }`}
+              >
+                {emailSending && emailUserInProgress === viewing.id
+                  ? "Sending Email..."
+                  : viewing.emailSent
+                  ? "Send Email Again"
+                  : "Send Email Now"}
+              </button>
+            </div>
+
+            {/* Map through answers and display each question with responses */}
+            {viewing.answers ? (
+              // Case 1: Use answers array if available
+              viewing.answers.map((selected, index) => {
+                const q = questions[index];
+                if (!q) return null; // Skip if question doesn't exist
+
+                const correct = viewing.correctAnswers?.[index] || null;
+                const isCorrect = selected === correct;
+                const wasAnswered = typeof selected === "number";
+
+                return (
+                  <div
+                    key={index}
+                    className={`mb-4 p-4 rounded-md border ${
+                      wasAnswered
+                        ? isCorrect
+                          ? "border-green-300 bg-green-50"
+                          : "border-red-300 bg-red-50"
+                        : "border-yellow-300 bg-yellow-50"
+                    }`}
+                  >
+                    <h4 className="font-semibold mb-2 text-gray-800">
+                      Q{index + 1}. {q.question}
+                    </h4>
+                    {q.options.map((opt, i) => (
+                      <div key={i} className="ml-4">
+                        <span
+                          className={`text-sm ${
+                            correct === i
+                              ? "font-bold text-green-700"
+                              : selected === i
+                              ? "text-red-500"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {i + 1}. {opt}
+                          {correct === i && " ✅"}
+                          {selected === i && selected !== correct && " ❌"}
+                        </span>
+                      </div>
+                    ))}
+                    {!wasAnswered && (
+                      <p className="mt-2 text-yellow-600 font-semibold">
+                        ❌ Unanswered
+                      </p>
+                    )}
+                  </div>
+                );
+              })
+            ) : viewing.detailedResults ? (
+              // Case 2: Fall back to detailedResults if answers array is not available (legacy format)
+              viewing.detailedResults.map((r, index) => {
+                const q = questions[r.q - 1] || {
+                  question: r.question || `Question ${r.q}`,
+                  options: [],
+                };
+
+                return (
+                  <div
+                    key={index}
+                    className={`mb-4 p-4 rounded-md border ${
+                      r.isCorrect
+                        ? "border-green-300 bg-green-50"
+                        : "border-red-300 bg-red-50"
+                    }`}
+                  >
+                    <h4 className="font-semibold mb-2 text-gray-800">
+                      Q{r.q}. {q.question}
+                    </h4>
+                    {q.options.map((opt, i) => (
+                      <div key={i} className="ml-4">
+                        <span
+                          className={`text-sm ${
+                            r.correct === i
+                              ? "font-bold text-green-700"
+                              : r.selected === i
+                              ? "text-red-500"
+                              : "text-gray-700"
+                          }`}
+                        >
+                          {i + 1}. {opt}
+                          {r.correct === i && " ✅"}
+                          {r.selected === i && r.correct !== i && " ❌"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })
+            ) : (
+              // Case 3: No data available
+              <p className="text-gray-600">
+                No detailed results available for this submission.
+              </p>
+            )}
 
             <button
               onClick={() => setViewing(null)}

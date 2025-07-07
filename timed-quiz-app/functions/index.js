@@ -42,6 +42,9 @@ exports.sendQuizResultEmail = onCall(
       // Extract any frontend data passed to the function
       const frontendData = request.data || {};
       const {
+        userId,  // Get userId if provided (for admin sending email on behalf of user)
+        userEmail, // Get direct user email if provided
+        userName,  // Get direct user name if provided
         answers: frontendAnswers, 
         detailedResults: frontendDetailedResults,
         correctAnswers: frontendCorrectAnswers,
@@ -50,7 +53,14 @@ exports.sendQuizResultEmail = onCall(
         testModeFromFrontend
       } = frontendData;
 
+      // Use the provided userId if available (from admin dashboard), otherwise use the authenticated user's ID
+      const targetUserId = userId || request.auth.uid;
+      
       console.log("Received frontend data:", JSON.stringify({
+        hasUserId: !!userId,
+        targetUserId,
+        hasUserEmail: !!userEmail,
+        hasUserName: !!userName,
         hasAnswers: Array.isArray(frontendAnswers),
         hasDetailedResults: Array.isArray(frontendDetailedResults),
         hasCorrectAnswers: Array.isArray(frontendCorrectAnswers),
@@ -60,13 +70,16 @@ exports.sendQuizResultEmail = onCall(
       }));
 
       // Always fetch quiz response from Firestore for reliability
-      let email = "", name = "", regno = "", mobile = "", quizDuration = "", isPostTest = false, score = 0, correct = 0, wrong = 0, total = 0, details = [];
+      let email = userEmail || "", name = userName || "", regno = "", mobile = "", quizDuration = "", isPostTest = false, score = 0, correct = 0, wrong = 0, total = 0, details = [];
       try {
-        const userDoc = await admin.firestore().collection("quiz_responses").doc(request.auth.uid).get();
+        console.log(`Fetching quiz response for user ID: ${targetUserId}`);
+        const userDoc = await admin.firestore().collection("quiz_responses").doc(targetUserId).get();
+        
         if (userDoc.exists) {
           const data = userDoc.data();
-          email = data.email || "";
-          name = data.name || "";
+          // Only use data from Firestore if not already provided in the request
+          email = userEmail || data.email || "";
+          name = userName || data.name || "";
           regno = data.regno || "";
           mobile = data.mobile || "";
           quizDuration = quizDurationFromFrontend || data.quizDuration || "";
@@ -77,7 +90,7 @@ exports.sendQuizResultEmail = onCall(
           total = data.total !== undefined ? data.total : (Array.isArray(data.answers) ? data.answers.length : 0);
           details = data.detailedResults || data.details || [];
         } else {
-          throw new functions.https.HttpsError("not-found", "Test response not found in Firestore.");
+          throw new functions.https.HttpsError("not-found", `Test response not found in Firestore for user ID: ${targetUserId}`);
         }
       } catch (e) {
         console.error("Failed to fetch test response from Firestore:", e);
@@ -114,13 +127,14 @@ exports.sendQuizResultEmail = onCall(
       } else {
         // Fetch user answers from Firestore as fallback
         try {
-          const userData = await admin.firestore().collection("quiz_responses").doc(request.auth.uid).get();
+          // Use targetUserId here instead of request.auth.uid to ensure consistency
+          const userData = await admin.firestore().collection("quiz_responses").doc(targetUserId).get();
           if (userData.exists) {
             userAnswers = userData.data().answers || [];
-            console.log(`Using ${userAnswers.length} answers from Firestore`);
+            console.log(`Using ${userAnswers.length} answers from Firestore for user ${targetUserId}`);
           }
         } catch (e) {
-          console.error("Failed to fetch user answers from Firestore:", e);
+          console.error(`Failed to fetch user answers from Firestore for user ${targetUserId}:`, e);
         }
       }
       
@@ -444,8 +458,9 @@ exports.sendQuizResultEmail = onCall(
         // Send the email
         await sgMail.send(msg);
         
+        console.log(`Updating Firestore record for user ID: ${targetUserId} to mark email as sent`);
         // Update Firestore to mark that email has been sent for this attempt
-        await admin.firestore().collection("quiz_responses").doc(request.auth.uid).update({
+        await admin.firestore().collection("quiz_responses").doc(targetUserId).update({
           emailSent: true,
           emailSentAt: admin.firestore.FieldValue.serverTimestamp()
         });
@@ -459,6 +474,7 @@ exports.sendQuizResultEmail = onCall(
             unansweredCount,
             // Removed emailVersion as version marker is no longer needed
             dataSource: frontendDetailedResults?.length > 0 ? "frontend" : "firestore",
+            userId: targetUserId, // Return the user ID that was processed
             emailSent: true
           }
         };

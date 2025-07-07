@@ -175,10 +175,10 @@ const ResultPage = ({
 
   return (
     <div className="max-w-5xl mx-auto mt-10 p-6 bg-white rounded-md shadow-sm relative">
-      {/* Toast notification */}
+      {/* Toast notification - Centered on mobile, right-aligned on desktop */}
       {showToast && (
         <div
-          className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-4 rounded-lg shadow-lg text-lg font-semibold transition-all duration-300 flex items-center justify-between gap-4
+          className={`fixed top-4 z-50 px-6 py-4 rounded-lg shadow-lg text-lg font-semibold transition-all duration-300 flex items-center justify-between gap-4 md:right-4 left-1/2 md:left-auto md:transform-none transform -translate-x-1/2 md:translate-x-0
             ${
               toastType === "success"
                 ? "bg-green-600 text-white"
@@ -187,7 +187,7 @@ const ResultPage = ({
                 : "bg-blue-600 text-white"
             }
           `}
-          style={{ minWidth: 280, maxWidth: 400 }}
+          style={{ width: "90%", maxWidth: "400px" }}
         >
           <span className="flex-1">{toastMsg}</span>
           <button
