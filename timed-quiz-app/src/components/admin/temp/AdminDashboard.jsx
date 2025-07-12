@@ -1,7 +1,6 @@
-// src/components/AdminDashboard.jsx
+// src/components/AdminDashboard.jsx - New clean version
 import React from "react";
 import { AdminProvider } from "./admin/AdminContext";
-import useAdmin from "./admin/hooks/useAdmin";
 import MobileSnackbar from "./MobileSnackbar";
 import AdminVisualizations from "./AdminVisualizations";
 import TestModeSelector from "./admin/TestModeSelector";
@@ -11,6 +10,7 @@ import DeleteModal from "./admin/DeleteModal";
 import BulkDeleteModal from "./admin/BulkDeleteModal";
 import EmailToast from "./admin/EmailToast";
 import ExportControls from "./admin/ExportControls";
+import { useAdmin } from "./admin/AdminContext";
 import NavigationControls from "./admin/NavigationControls";
 
 // Main component that uses the context
@@ -67,6 +67,13 @@ const AdminDashboardContent = () => {
           🧾 Admin Dashboard
         </h2>
 
+        {/* Navigation Controls Info */}
+        <div className="hidden md:block mb-4 text-center">
+          <p className="text-xs text-gray-600 italic">
+            Tip: Press and hold the navigation buttons for continuous scrolling
+          </p>
+        </div>
+
         {/* Test Mode Selector */}
         <TestModeSelector />
 
@@ -117,6 +124,17 @@ const AdminDashboardContent = () => {
           </p>
         ) : (
           <div>
+            {/* Mobile-friendly notice */}
+            <div className="md:hidden mb-4 bg-blue-50 p-4 rounded-lg border border-blue-200 text-sm">
+              <p className="font-medium text-blue-800">
+                Note: This table is scrollable horizontally.
+              </p>
+              <p className="text-blue-600">
+                Swipe left/right to view all columns or use the navigation
+                controls available.
+              </p>
+            </div>
+
             {/* Submissions Table */}
             <SubmissionsTable />
           </div>
