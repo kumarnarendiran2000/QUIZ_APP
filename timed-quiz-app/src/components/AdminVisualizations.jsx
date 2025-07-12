@@ -94,7 +94,7 @@ const AdminVisualizations = ({ submissions, onClose }) => {
         <div className="w-full flex flex-col sm:block">
           <button
             onClick={handleBack}
-            className="mb-4 sm:mb-0 sm:absolute sm:top-4 sm:left-4 text-gray-500 hover:text-gray-800 text-base sm:text-lg font-bold border border-gray-300 rounded px-4 py-2 bg-white cursor-pointer w-full sm:w-auto"
+            className="mb-4 sm:mb-0 sm:absolute sm:top-4 sm:left-4 text-white text-base sm:text-lg font-bold rounded-lg px-4 py-2 bg-purple-600 hover:bg-purple-700 shadow-lg transition-colors duration-200 cursor-pointer w-full sm:w-auto"
           >
             ← Back to Dashboard
           </button>
@@ -298,6 +298,16 @@ const AdminVisualizations = ({ submissions, onClose }) => {
               </BarChart>
             </ResponsiveContainer>
           </div>
+        </div>
+
+        {/* Bottom Back to Dashboard button - mobile optimized */}
+        <div className="w-full flex justify-start mt-8 mb-4 px-4">
+          <button
+            onClick={handleBack}
+            className="text-white hover:text-gray-100 text-base sm:text-lg font-bold rounded-lg px-6 py-3 bg-purple-600 hover:bg-purple-700 cursor-pointer shadow-lg transition-colors duration-200 w-full sm:w-auto max-w-xs"
+          >
+            ← Back to Dashboard
+          </button>
         </div>
       </div>
     </div>

@@ -218,6 +218,7 @@ const AdminDashboard = () => {
   const [originalOrder, setOriginalOrder] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewing, setViewing] = useState(null);
+  const [correctAnswers, setCorrectAnswers] = useState([]);
   const [isSorted, setIsSorted] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null); // {id, name} or null
   const [deleteLoading, setDeleteLoading] = useState(false);
@@ -476,16 +477,31 @@ const AdminDashboard = () => {
 
   return (
     <>
+      {/* Add fade-out animation style */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+          @keyframes fadeOut {
+            0% { opacity: 1; }
+            70% { opacity: 1; }
+            100% { opacity: 0; }
+          }
+          .animate-fade-out {
+            animation: fadeOut 3s forwards;
+          }
+        `,
+        }}
+      />
       <MobileSnackbar
         open={showMobileSnackbar}
         message="PDF saved to Downloads. Open with a PDF viewer for best experience. For best results, try exporting from a desktop browser."
         onClose={() => setShowMobileSnackbar(false)}
       />{" "}
-      {/* Sticky Navigation Buttons */}
+      {/* Sticky Navigation Buttons with semi-transparent effect */}
       <div className="fixed top-20 right-4 z-50">
         <button
           onClick={() => setShowScrollButtons((prev) => !prev)}
-          className="bg-gray-800 hover:bg-gray-900 text-white text-xs md:text-sm px-3 py-2 rounded-full shadow-lg flex items-center"
+          className="bg-gray-800 hover:bg-gray-900 text-white text-xs md:text-sm px-3 py-2 rounded-full shadow-lg flex items-center opacity-50 hover:opacity-100 focus:opacity-100 transition-opacity duration-200"
           title={`${
             showScrollButtons ? "Hide" : "Show"
           } Navigation Controls (Ctrl+N)`}
@@ -712,7 +728,7 @@ const AdminDashboard = () => {
               <table className="min-w-full text-sm sm:text-base text-left print:text-xs whitespace-nowrap md:whitespace-normal">
                 <thead className="bg-gray-100 text-gray-700 uppercase font-semibold">
                   <tr>
-                    <th className="px-2 py-3">
+                    <th className="px-2 py-3 text-center w-12">
                       <input
                         type="checkbox"
                         checked={selectAll}
@@ -720,31 +736,41 @@ const AdminDashboard = () => {
                         aria-label="Select all"
                       />
                     </th>
-                    <th className="px-4 py-3">S. No</th>
-                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3 text-center w-16">S. No</th>
+                    <th className="px-4 py-3 text-center">Name</th>
                     <th className="px-4 py-3">Registration Number</th>
-                    <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3 text-center">Email</th>
                     <th className="px-4 py-3">Mobile</th>
-                    <th className="px-4 py-3">Answered</th>
-                    <th className="px-4 py-3">Unanswered</th>
-                    <th className="px-4 py-3 font-bold text-blue-700 bg-blue-50">
-                      Test Mode (Per User)
+                    <th className="px-2 py-3 text-center w-20">Answered</th>
+                    <th className="px-2 py-3 text-center w-20">Unanswered</th>
+                    <th className="px-4 py-3 font-bold text-blue-700 bg-blue-50 text-center">
+                      Test Mode
                     </th>
-                    <th className="px-4 py-3">Score</th>
-                    <th className="px-4 py-3 text-green-700">Correct</th>
-                    <th className="px-4 py-3 text-red-700">Wrong</th>
-                    <th className="px-4 py-3">Time Taken</th>
-                    <th className="px-4 py-3">Completed At</th>
-                    <th className="px-4 py-3">Tab Switches</th>
-                    <th className="px-4 py-3">Copy Attempts</th>
-                    <th className="px-4 py-3 font-bold text-purple-700 bg-purple-50">
+                    <th className="px-4 py-3 text-center w-16">Score</th>
+                    <th className="px-4 py-3 text-green-700 text-center w-16">
+                      Correct
+                    </th>
+                    <th className="px-4 py-3 text-red-700 text-center w-16">
+                      Wrong
+                    </th>
+                    <th className="px-4 py-3 text-center">Time Taken</th>
+                    <th className="px-4 py-3 text-center">Completed At</th>
+                    <th className="px-4 py-3 text-center w-24">Tab Switches</th>
+                    <th className="px-4 py-3 text-center w-24">
+                      Copy Attempts
+                    </th>
+                    <th className="px-4 py-3 font-bold text-purple-700 bg-purple-50 text-center w-24">
                       Email Sent
                     </th>
-                    <th className="px-4 py-3 font-bold text-indigo-700 bg-indigo-50 print:hidden">
+                    <th className="px-4 py-3 font-bold text-indigo-700 bg-indigo-50 print:hidden text-center">
                       Email Action
                     </th>
-                    <th className="px-4 py-3 print:hidden">Action</th>
-                    <th className="px-4 py-3 print:hidden">Delete</th>
+                    <th className="px-4 py-3 print:hidden text-center">
+                      Action
+                    </th>
+                    <th className="px-4 py-3 print:hidden text-center">
+                      Delete
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -763,34 +789,48 @@ const AdminDashboard = () => {
                           aria-label={`Select row ${idx + 1}`}
                         />
                       </td>
-                      <td className="px-4 py-2">{idx + 1}</td>
-                      <td className="px-4 py-2">{s.name}</td>
+                      <td className="px-4 py-2 text-center">{idx + 1}</td>
+                      <td className="px-4 py-2 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {s.name}
+                      </td>
                       <td className="px-4 py-2">{s.regno || "-"}</td>
-                      <td className="px-4 py-2">{s.email}</td>
+                      <td className="px-4 py-2 whitespace-nowrap overflow-hidden text-ellipsis">
+                        {s.email}
+                      </td>
                       <td className="px-4 py-2">{s.mobile}</td>
-                      <td className="px-4 py-2">{s.answeredCount}</td>
-                      <td className="px-4 py-2">{s.unansweredCount}</td>
-                      {/* Show per-user test mode from Firestore */}
-                      <td className="px-4 py-2 text-blue-700 font-semibold uppercase">
+                      <td className="px-2 py-2 text-center w-20">
+                        {s.answeredCount}
+                      </td>
+                      <td className="px-2 py-2 text-center w-20">
+                        {s.unansweredCount}
+                      </td>
+                      {/* Show user's test mode from Firestore */}
+                      <td className="px-4 py-2 text-blue-700 font-semibold uppercase text-center">
                         {s.testModeAtStart || "-"}
                       </td>
-                      <td className="px-4 py-2 font-semibold">{s.score}</td>
-                      <td className="px-4 py-2 text-green-600">
+                      <td className="px-4 py-2 font-semibold text-center w-16">
+                        {s.score}
+                      </td>
+                      <td className="px-4 py-2 text-green-600 text-center w-16">
                         {s.correctCount}
                       </td>
-                      <td className="px-4 py-2 text-red-600">{s.wrongCount}</td>
-                      <td className="px-4 py-2">{s.quizDuration || "N/A"}</td>
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-2 text-red-600 text-center w-16">
+                        {s.wrongCount}
+                      </td>
+                      <td className="px-4 py-2 text-center">
+                        {s.quizDuration || "N/A"}
+                      </td>
+                      <td className="px-4 py-2 text-center">
                         {s.completedAt
                           ? new Date(s.completedAt).toLocaleString()
                           : "N/A"}
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-2 text-center w-24">
                         {typeof s.tabSwitchCount === "number"
                           ? s.tabSwitchCount
                           : 0}
                       </td>
-                      <td className="px-4 py-2">
+                      <td className="px-4 py-2 text-center w-24">
                         {typeof s.copyAttemptCount === "number"
                           ? s.copyAttemptCount
                           : 0}
@@ -825,15 +865,46 @@ const AdminDashboard = () => {
                             : "Send Email"}
                         </button>
                       </td>
-                      <td className="px-4 py-2 print:hidden">
+                      <td className="px-4 py-2 print:hidden text-center">
                         <button
-                          onClick={() => setViewing(s)}
+                          onClick={async () => {
+                            setViewing(s);
+                            // Fetch correct answers from metadata when viewing a result
+                            try {
+                              const metadataRef = doc(
+                                db,
+                                "quiz_metadata",
+                                "default"
+                              );
+                              const metadataSnap = await getDoc(metadataRef);
+                              if (metadataSnap.exists()) {
+                                setCorrectAnswers(
+                                  metadataSnap.data().correctAnswers || []
+                                );
+                              }
+                            } catch (err) {
+                              console.error(
+                                "Failed to fetch correct answers:",
+                                err
+                              );
+                            }
+
+                            // Add a small delay to ensure the DOM updates before scrolling
+                            setTimeout(() => {
+                              document
+                                .getElementById("result-view")
+                                ?.scrollIntoView({
+                                  behavior: "smooth",
+                                  block: "start",
+                                });
+                            }, 100);
+                          }}
                           className="px-3 py-1 bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md text-sm font-medium transition-colors duration-200 border border-blue-200 shadow-sm"
                         >
                           📊 View Result
                         </button>
                       </td>
-                      <td className="px-4 py-2 print:hidden">
+                      <td className="px-4 py-2 print:hidden text-center">
                         <button
                           onClick={() =>
                             setDeleteTarget({ id: s.id, name: s.name })
@@ -852,7 +923,26 @@ const AdminDashboard = () => {
         )}
 
         {viewing && (
-          <div className="mt-8 p-6 border border-gray-300 rounded-md bg-gray-50">
+          <div
+            id="result-view"
+            className="mt-8 p-6 border border-gray-300 rounded-md bg-gray-50 relative"
+          >
+            {/* Floating close results view button with semi-transparency (positioned to avoid collision with controls) */}
+            <div className="fixed left-4 top-32 z-50">
+              <button
+                onClick={() => {
+                  setViewing(null);
+                  tableRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-full shadow-lg flex items-center text-xs md:text-sm"
+              >
+                Close Results View <span className="mx-1">↑</span> Table
+              </button>
+            </div>
+
             <div className="mb-4">
               <span className="font-bold">Name:</span> {viewing.name} <br />
               <span className="font-bold">Registration Number:</span>{" "}
@@ -911,7 +1001,7 @@ const AdminDashboard = () => {
                 const q = questions[index];
                 if (!q) return null; // Skip if question doesn't exist
 
-                const correct = viewing.correctAnswers?.[index] || null;
+                const correct = correctAnswers[index]; // Use from component state instead of viewing object
                 const isCorrect = selected === correct;
                 const wasAnswered = typeof selected === "number";
 
@@ -962,6 +1052,10 @@ const AdminDashboard = () => {
                   options: [],
                 };
 
+                // Use correctAnswers from state for legacy format too
+                const correct = correctAnswers[r.q - 1];
+                const selected = r.selected;
+
                 return (
                   <div
                     key={index}
@@ -978,16 +1072,16 @@ const AdminDashboard = () => {
                       <div key={i} className="ml-4">
                         <span
                           className={`text-sm ${
-                            r.correct === i
+                            correct === i
                               ? "font-bold text-green-700"
-                              : r.selected === i
+                              : selected === i
                               ? "text-red-500"
                               : "text-gray-700"
                           }`}
                         >
                           {i + 1}. {opt}
-                          {r.correct === i && " ✅"}
-                          {r.selected === i && r.correct !== i && " ❌"}
+                          {correct === i && " ✅"}
+                          {selected === i && selected !== correct && " ❌"}
                         </span>
                       </div>
                     ))}
@@ -1001,12 +1095,7 @@ const AdminDashboard = () => {
               </p>
             )}
 
-            <button
-              onClick={() => setViewing(null)}
-              className="mt-4 text-sm text-gray-600 underline hover:text-gray-800 cursor-pointer"
-            >
-              ← Close Result View
-            </button>
+            {/* Removed bottom close button since we now have a floating button */}
           </div>
         )}
 

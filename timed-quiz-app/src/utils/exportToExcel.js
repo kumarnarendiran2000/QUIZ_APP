@@ -21,7 +21,7 @@ export function exportSubmissionsToExcel(submissions) {
     { header: "Mobile", key: "mobile" },
     { header: "Answered", key: "answeredCount" },
     { header: "Unanswered", key: "unansweredCount" },
-    { header: "Test Mode (Per User)", key: "testModeAtStart" },
+    { header: "Test Mode", key: "testModeAtStart" },
     { header: "Score", key: "score" },
     { header: "Correct", key: "correctCount" },
     { header: "Wrong", key: "wrongCount" },
