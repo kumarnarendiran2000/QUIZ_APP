@@ -176,6 +176,9 @@ const SubmissionsTable = () => {
                 Time Taken
               </th>
               <th className="px-4 py-3 text-center whitespace-nowrap">
+                Started At
+              </th>
+              <th className="px-4 py-3 text-center whitespace-nowrap">
                 Completed At
               </th>
               <th className="px-4 py-3 text-center w-24">Tab Switches</th>
@@ -236,6 +239,9 @@ const SubmissionsTable = () => {
                 </td>
                 <td className="px-4 py-2 text-center whitespace-nowrap">
                   {s.quizDuration || "N/A"}
+                </td>
+                <td className="px-4 py-2 text-center whitespace-nowrap">
+                  {s.startedAt ? new Date(s.startedAt).toLocaleString() : "N/A"}
                 </td>
                 <td className="px-4 py-2 text-center whitespace-nowrap">
                   {s.completedAt

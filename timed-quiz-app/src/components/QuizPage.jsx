@@ -1,7 +1,7 @@
 // src/components/QuizPage.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { questions } from "../data/questions";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "../utils/firebase";
 
 const QuizPage = ({
@@ -28,17 +28,83 @@ const QuizPage = ({
   const proctorIntervalRef = useRef(null);
   const autoSubmittedRef = useRef(false); // Prevent double auto-submit
 
+  // Store the startedAt timestamp locally for more accurate timing
+  const startedAtRef = useRef(null);
+
   useEffect(() => {
+    // Timer effect - countdown logic with server-time synchronization
     if (timeLeft > 0) {
+      // Get startedAt once to use for all calculations
+      if (!startedAtRef.current && user?.uid) {
+        // Retrieve the startedAt value from Firestore
+        (async () => {
+          try {
+            const userRef = doc(db, "quiz_responses", user.uid);
+            const userSnap = await getDoc(userRef);
+
+            if (userSnap.exists() && userSnap.data().startedAt) {
+              startedAtRef.current = userSnap.data().startedAt;
+            }
+          } catch (error) {
+            console.error("Error fetching startedAt:", error);
+          }
+        })();
+      }
+
+      // Set up the timer with a slightly more frequent update to ensure accuracy
       timerRef.current = setInterval(() => {
-        setTimeLeft((t) => t - 1);
+        if (startedAtRef.current) {
+          // Calculate remaining time based on server timestamp
+          const elapsedSec = Math.floor(
+            (Date.now() - startedAtRef.current) / 1000
+          );
+          const serverTimeLeft = Math.max(0, 1200 - elapsedSec); // 1200 = QUIZ_DURATION
+
+          // Only update if there's a meaningful difference to avoid unnecessary re-renders
+          if (Math.abs(serverTimeLeft - timeLeft) >= 1) {
+            setTimeLeft(serverTimeLeft);
+          } else {
+            // Normal countdown when in sync
+            setTimeLeft((t) => Math.max(0, t - 1));
+          }
+        } else {
+          // If startedAt not available yet, use normal countdown
+          setTimeLeft((t) => Math.max(0, t - 1));
+        }
       }, 1000);
     } else {
       onSubmit();
     }
 
     return () => clearInterval(timerRef.current);
-  }, [timeLeft, setTimeLeft, onSubmit]);
+  }, [timeLeft, setTimeLeft, onSubmit, user]);
+
+  // Handle tab visibility changes to ensure timer keeps running even when tab is inactive
+  useEffect(() => {
+    if (!user?.uid) return; // Only run this for logged in users
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible" && startedAtRef.current) {
+        // Immediate sync when tab becomes visible again
+        const elapsedSec = Math.floor(
+          (Date.now() - startedAtRef.current) / 1000
+        );
+        const serverTimeLeft = Math.max(0, 1200 - elapsedSec); // 1200 = QUIZ_DURATION
+
+        if (Math.abs(serverTimeLeft - timeLeft) >= 2) {
+          console.log(
+            `Tab visible sync: Client: ${timeLeft}s, Server: ${serverTimeLeft}s`
+          );
+          setTimeLeft(serverTimeLeft);
+        }
+      }
+    };
+
+    // Register visibility change event for timer sync
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [timeLeft, setTimeLeft, user]);
 
   // Proctoring: Tab switch detection and handling
   useEffect(() => {

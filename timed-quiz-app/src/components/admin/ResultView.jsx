@@ -142,6 +142,39 @@ const ResultView = () => {
                 ⬜ Unanswered: <strong>{viewing.unansweredCount}</strong>
               </div>
             </div>
+
+            <div className="px-3 py-2 rounded-md bg-gray-50 text-gray-700 flex flex-wrap justify-center gap-x-4 gap-y-2">
+              <div className="flex-shrink-0 whitespace-nowrap">
+                🕒 Started At:{" "}
+                <strong>
+                  {viewing.startedAt
+                    ? new Date(viewing.startedAt).toLocaleString()
+                    : "N/A"}
+                </strong>
+              </div>
+              <div className="flex-shrink-0 whitespace-nowrap">
+                🏁 Completed At:{" "}
+                <strong>
+                  {viewing.completedAt
+                    ? new Date(viewing.completedAt).toLocaleString()
+                    : "N/A"}
+                </strong>
+              </div>
+            </div>
+
+            <div className="px-3 py-2 rounded-md bg-gray-50 text-gray-700 flex flex-wrap justify-center gap-x-4 gap-y-2">
+              <div className="flex-shrink-0 whitespace-nowrap">
+                ⏱️ Time Taken: <strong>{viewing.quizDuration || "N/A"}</strong>
+              </div>
+              <div className="flex-shrink-0 whitespace-nowrap">
+                🔄 Tab Switches:{" "}
+                <strong>
+                  {typeof viewing.tabSwitchCount === "number"
+                    ? viewing.tabSwitchCount
+                    : 0}
+                </strong>
+              </div>
+            </div>
           </div>
 
           {/* Email Status - Centered properly */}

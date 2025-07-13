@@ -143,6 +143,12 @@ const App = () => {
 
     if (user) {
       const ref = doc(db, "quiz_responses", user.uid);
+
+      // First check if the user already has a startedAt timestamp
+      const existingSnap = await getDoc(ref);
+      const currentStartedAt =
+        existingSnap.exists() && existingSnap.data().startedAt;
+
       await setDoc(
         ref,
         {
@@ -150,7 +156,8 @@ const App = () => {
           email: user.email,
           mobile: userInfo.mobile,
           regno: userInfo.regno,
-          startedAt: Date.now(),
+          // Only set startedAt if it doesn't exist yet - never overwrite it
+          ...(currentStartedAt ? {} : { startedAt: Date.now() }),
           answers: initialAnswers,
           testModeAtStart: mode,
         },
@@ -204,8 +211,41 @@ const App = () => {
     ).length;
     const unansweredCount = questions.length - answeredCount;
 
-    // ⏱️ Calculate quiz duration using UI timer
-    const timeTakenSec = QUIZ_DURATION - timeLeft;
+    // ⏱️ Calculate quiz duration using server timestamps as source of truth
+    let timeTakenSec;
+
+    if (user) {
+      // Get the existing document to read startedAt
+      const userRef = doc(db, "quiz_responses", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists() && userSnap.data().startedAt) {
+        // Calculate time based on server timestamps (startedAt to now)
+        const startedAtTime = userSnap.data().startedAt;
+        const completedAtTime = Date.now();
+
+        // Use server calculation with a safeguard (0 to QUIZ_DURATION)
+        timeTakenSec = Math.min(
+          Math.max(0, Math.floor((completedAtTime - startedAtTime) / 1000)),
+          QUIZ_DURATION
+        );
+
+        // Log any suspicious timing discrepancies
+        const clientSideCalc = QUIZ_DURATION - timeLeft;
+        if (Math.abs(clientSideCalc - timeTakenSec) > 60) {
+          console.warn(
+            `Timing discrepancy detected! Server calc: ${timeTakenSec}s, Client calc: ${clientSideCalc}s`
+          );
+        }
+      } else {
+        // Fallback to client-side timer if startedAt isn't available
+        timeTakenSec = Math.max(0, QUIZ_DURATION - timeLeft);
+      }
+    } else {
+      // Fallback to client-side timer if user isn't available
+      timeTakenSec = Math.max(0, QUIZ_DURATION - timeLeft);
+    }
+
     const mins = Math.floor(timeTakenSec / 60);
     const secs = timeTakenSec % 60;
     const quizDuration = `${mins}m ${secs}s`;
