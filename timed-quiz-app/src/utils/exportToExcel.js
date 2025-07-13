@@ -26,31 +26,63 @@ export function exportSubmissionsToExcel(submissions) {
     { header: "Correct", key: "correctCount" },
     { header: "Wrong", key: "wrongCount" },
     { header: "Time Taken", key: "quizDuration" },
+    { header: "Started At", key: "startedAt" },
     { header: "Completed At", key: "completedAt" },
     { header: "Tab Switches", key: "tabSwitchCount" },
     { header: "Copy Attempts", key: "copyAttemptCount" },
     { header: "Email Sent", key: "emailSent" },
+    { header: "Submission Type", key: "submissionType" },
+    { header: "Auto-Submit Reason", key: "autoSubmitReason" },
+    { header: "Device Type", key: "deviceType" },
+    { header: "Browser Info", key: "browserInfo" },
+    { header: "Screen Resolution", key: "screenResolution" },
   ];
 
   // Prepare data rows
-  const data = submissions.map((s, idx) => ({
-    sno: idx + 1,
-    name: s.name || "",
-    regno: s.regno || "-",
-    email: s.email || "",
-    mobile: s.mobile || "",
-    answeredCount: s.answeredCount ?? "",
-    unansweredCount: s.unansweredCount ?? "",
-    testModeAtStart: s.testModeAtStart || "-",
-    score: s.score ?? "",
-    correctCount: s.correctCount ?? "",
-    wrongCount: s.wrongCount ?? "",
-    quizDuration: s.quizDuration || "N/A",
-    completedAt: s.completedAt ? new Date(s.completedAt).toLocaleString() : "N/A",
-    tabSwitchCount: typeof s.tabSwitchCount === "number" ? s.tabSwitchCount : 0,
-    copyAttemptCount: typeof s.copyAttemptCount === "number" ? s.copyAttemptCount : 0,
-    emailSent: s.emailSent === true ? "Yes" : "No",
-  }));
+  const data = submissions.map((s, idx) => {
+    // Format submission type with the same logic as in the table
+    let submissionType = "Manual";
+    if (s.submissionType === "auto") {
+      submissionType = "Auto";
+    } else if (s.submissionType === "manual" && s.completedAt < 1720900800000) {
+      submissionType = "Legacy";
+    }
+    
+    // Format auto-submit reason with the same logic as in the table
+    let autoSubmitReason = "-";
+    if (s.submissionType === "auto") {
+      if (s.autoSubmitReason === "timeExpired") autoSubmitReason = "Timer Expired";
+      else if (s.autoSubmitReason === "maxTabSwitches") autoSubmitReason = "Max Tab Switches";
+      else if (s.autoSubmitReason === "tabSwitchTimeout") autoSubmitReason = "Tab Switch Timeout";
+      else if (s.autoSubmitReason === "maxCopyAttempts") autoSubmitReason = "Copy Attempts Limit";
+      else autoSubmitReason = "Unknown";
+    }
+    
+    return {
+      sno: idx + 1,
+      name: s.name || "",
+      regno: s.regno || "-",
+      email: s.email || "",
+      mobile: s.mobile || "",
+      answeredCount: s.answeredCount ?? "",
+      unansweredCount: s.unansweredCount ?? "",
+      testModeAtStart: s.testModeAtStart || "-",
+      score: s.score ?? "",
+      correctCount: s.correctCount ?? "",
+      wrongCount: s.wrongCount ?? "",
+      quizDuration: s.quizDuration || "N/A",
+      startedAt: s.startedAt ? new Date(s.startedAt).toLocaleString() : "N/A",
+      completedAt: s.completedAt ? new Date(s.completedAt).toLocaleString() : "N/A",
+      submissionType,
+      autoSubmitReason,
+      deviceType: s.deviceType || "Unknown",
+      browserInfo: s.browserInfo || "Unknown",
+      screenResolution: s.screenResolution || "Unknown",
+      tabSwitchCount: typeof s.tabSwitchCount === "number" ? s.tabSwitchCount : 0,
+      copyAttemptCount: typeof s.copyAttemptCount === "number" ? s.copyAttemptCount : 0,
+      emailSent: s.emailSent === true ? "Yes" : "No",
+    };
+  });
 
   // Create worksheet and workbook
   const ws = XLSX.utils.json_to_sheet([], { header: columns.map(c => c.key) });

@@ -175,6 +175,67 @@ const ResultView = () => {
                 </strong>
               </div>
             </div>
+
+            <div className="px-3 py-2 rounded-md bg-orange-50 text-gray-700 flex flex-wrap justify-center gap-x-4 gap-y-2">
+              <div className="flex-shrink-0 whitespace-nowrap">
+                📝 Submission Type:{" "}
+                <strong
+                  className={
+                    viewing.submissionType === "auto"
+                      ? "text-orange-700"
+                      : viewing.submissionType === "manual" &&
+                        viewing.completedAt < 1720900800000
+                      ? "text-gray-700"
+                      : "text-blue-700"
+                  }
+                >
+                  {viewing.submissionType === "auto"
+                    ? "Auto"
+                    : viewing.submissionType === "manual" &&
+                      viewing.completedAt < 1720900800000
+                    ? "Legacy"
+                    : "Manual"}
+                </strong>
+              </div>
+              {viewing.submissionType === "auto" && (
+                <div className="flex-shrink-0 whitespace-nowrap text-left">
+                  <span className="inline-block align-middle">
+                    ℹ️ Auto-Submit Reason:
+                  </span>{" "}
+                  <strong className="text-orange-700 inline-block align-middle">
+                    {viewing.autoSubmitReason === "timeExpired"
+                      ? "Timer Expired"
+                      : viewing.autoSubmitReason === "maxTabSwitches"
+                      ? "Max Tab Switches"
+                      : viewing.autoSubmitReason === "tabSwitchTimeout"
+                      ? "Tab Switch Timeout"
+                      : viewing.autoSubmitReason === "maxCopyAttempts"
+                      ? "Copy Attempts Limit"
+                      : viewing.autoSubmitReason || "Unknown"}
+                  </strong>
+                </div>
+              )}
+            </div>
+
+            <div className="px-3 py-2 rounded-md bg-purple-50 text-gray-700 flex flex-wrap justify-center gap-x-4 gap-y-2">
+              <div className="flex-shrink-0 whitespace-nowrap">
+                📱 Device Type:{" "}
+                <strong
+                  className={
+                    viewing.deviceType === "mobile"
+                      ? "text-red-700"
+                      : viewing.deviceType === "tablet"
+                      ? "text-yellow-700"
+                      : "text-green-700"
+                  }
+                >
+                  {viewing.deviceType || "Unknown"}
+                </strong>
+              </div>
+              <div className="flex-shrink-0 whitespace-nowrap">
+                🌐 Browser: <strong>{viewing.browserInfo || "Unknown"}</strong>
+              </div>
+            </div>
           </div>
 
           {/* Email Status - Centered properly */}

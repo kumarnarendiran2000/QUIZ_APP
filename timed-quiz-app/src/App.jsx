@@ -109,6 +109,47 @@ const App = () => {
           setTabSwitchCount(restoredTabSwitchCount);
           const restoredCopyAttemptCount = data.copyAttemptCount || 0;
           setCopyAttemptCount(restoredCopyAttemptCount);
+
+          // Ensure device info is captured on return/reload
+          const { detectDeviceType, getBrowserInfo, getScreenResolution } =
+            await import("./utils/deviceDetector");
+
+          // Try to get device information with error handling
+          let deviceInfo = {
+            deviceType: data.deviceType || "Unknown",
+            browserInfo: data.browserInfo || "Unknown",
+            screenResolution: data.screenResolution || "Unknown",
+          };
+
+          try {
+            // Only update if existing values are missing or "Unknown"
+            if (!data.deviceType || data.deviceType === "Unknown") {
+              deviceInfo.deviceType = detectDeviceType();
+            }
+            if (!data.browserInfo || data.browserInfo === "Unknown") {
+              deviceInfo.browserInfo = getBrowserInfo();
+            }
+            if (!data.screenResolution || data.screenResolution === "Unknown") {
+              deviceInfo.screenResolution = getScreenResolution();
+            }
+
+            console.log("Reloading with device info:", deviceInfo);
+          } catch (error) {
+            console.error("Error detecting device info on reload:", error);
+          }
+
+          // Update device information in Firestore to ensure it's always available
+          await setDoc(
+            doc(db, "quiz_responses", loggedInUser.uid),
+            {
+              ...deviceInfo,
+              // Keep existing submission type and reason if present
+              submissionType: data.submissionType || "manual",
+              autoSubmitReason: data.autoSubmitReason || null,
+            },
+            { merge: true }
+          );
+
           if (restoredTabSwitchCount >= 10 || restoredCopyAttemptCount >= 10) {
             setStep("quiz");
             return;
@@ -127,6 +168,28 @@ const App = () => {
   // ✅ Step 2: Start Quiz
   const startQuiz = async () => {
     const initialAnswers = Array(questions.length).fill(null);
+
+    // Import device detector functions at the top level to ensure it's always available
+    const { detectDeviceType, getBrowserInfo, getScreenResolution } =
+      await import("./utils/deviceDetector");
+
+    // Get device information with error handling
+    let deviceType = "Unknown";
+    let browserInfo = "Unknown";
+    let screenResolution = "Unknown";
+
+    try {
+      deviceType = detectDeviceType();
+      browserInfo = getBrowserInfo();
+      screenResolution = getScreenResolution();
+
+      // Log for debugging
+      console.log(
+        `Device detection: ${deviceType}, ${browserInfo}, ${screenResolution}`
+      );
+    } catch (error) {
+      console.error("Error detecting device info:", error);
+    }
 
     // Fetch the current test mode from Firestore
     let mode = "post";
@@ -149,6 +212,25 @@ const App = () => {
       const currentStartedAt =
         existingSnap.exists() && existingSnap.data().startedAt;
 
+      // Only update device info if we have valid values
+      const deviceData = {
+        deviceType:
+          deviceType !== "Unknown"
+            ? deviceType
+            : (existingSnap.exists() && existingSnap.data().deviceType) ||
+              "Unknown",
+        browserInfo:
+          browserInfo !== "Unknown"
+            ? browserInfo
+            : (existingSnap.exists() && existingSnap.data().browserInfo) ||
+              "Unknown",
+        screenResolution:
+          screenResolution !== "Unknown"
+            ? screenResolution
+            : (existingSnap.exists() && existingSnap.data().screenResolution) ||
+              "Unknown",
+      };
+
       await setDoc(
         ref,
         {
@@ -160,6 +242,11 @@ const App = () => {
           ...(currentStartedAt ? {} : { startedAt: Date.now() }),
           answers: initialAnswers,
           testModeAtStart: mode,
+          // Add device information
+          ...deviceData,
+          // Initialize submission type
+          submissionType: "manual", // Will be updated to "auto" if auto-submitted
+          autoSubmitReason: null, // Will be filled if auto-submitted
         },
         { merge: true }
       );
@@ -184,6 +271,20 @@ const App = () => {
     }
 
     const correctAnswers = metadataSnap.data().correctAnswers;
+
+    // Get current submission data to preserve auto-submission status
+    let submissionType = "manual";
+    let autoSubmitReason = null;
+
+    if (user) {
+      const userRef = doc(db, "quiz_responses", user.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        submissionType = userSnap.data().submissionType || "manual";
+        autoSubmitReason = userSnap.data().autoSubmitReason || null;
+      }
+    }
 
     // ✅ 2. Compare answers & build detailed results
     let correctCount = 0;
@@ -268,6 +369,9 @@ const App = () => {
           detailedResults,
           quizDuration,
           completedAt: Date.now(), // Optional: tie-breaker
+          // Preserve submission type and reason
+          submissionType,
+          autoSubmitReason,
         },
         { merge: true }
       );

@@ -72,12 +72,31 @@ const QuizPage = ({
           setTimeLeft((t) => Math.max(0, t - 1));
         }
       }, 1000);
-    } else {
-      onSubmit();
+    } else if (timeLeft <= 0 && !submitting && !autoSubmittedRef.current) {
+      // Prevent multiple auto-submissions
+      autoSubmittedRef.current = true;
+      setSubmitting(true);
+
+      // Record time expiry auto-submission reason
+      if (user?.uid) {
+        setDoc(
+          doc(db, "quiz_responses", user.uid),
+          {
+            submissionType: "auto",
+            autoSubmitReason: "timeExpired",
+          },
+          { merge: true }
+        ).then(() => {
+          // Only submit after the status is updated in Firestore
+          onSubmit();
+        });
+      } else {
+        onSubmit();
+      }
     }
 
     return () => clearInterval(timerRef.current);
-  }, [timeLeft, setTimeLeft, onSubmit, user]);
+  }, [timeLeft, setTimeLeft, onSubmit, user, submitting]);
 
   // Handle tab visibility changes to ensure timer keeps running even when tab is inactive
   useEffect(() => {
@@ -150,6 +169,19 @@ const QuizPage = ({
               setShowProctorWarning(false);
               setProctorAutoSubmit(true);
               setSubmitting(true);
+
+              // Update Firestore with auto-submit reason for tab switching timeout
+              if (user?.uid) {
+                setDoc(
+                  doc(db, "quiz_responses", user.uid),
+                  {
+                    submissionType: "auto",
+                    autoSubmitReason: "tabSwitchTimeout",
+                  },
+                  { merge: true }
+                );
+              }
+
               setTimeout(() => {
                 onSubmit();
               }, 2000); // Show the auto-submit popup for 2 seconds
@@ -163,17 +195,30 @@ const QuizPage = ({
     } else {
       clearInterval(proctorIntervalRef.current);
     }
-  }, [showProctorWarning, onSubmit]);
+  }, [showProctorWarning, onSubmit, user]);
 
   // If proctorAutoSubmit is set (after 5th switch or timeout), always auto-submit
   useEffect(() => {
     if (proctorAutoSubmit && !submitting) {
       setSubmitting(true);
+
+      // Update Firestore with auto-submit reason for max tab switches reached
+      if (user?.uid && tabSwitchCount >= MAX_TAB_SWITCHES) {
+        setDoc(
+          doc(db, "quiz_responses", user.uid),
+          {
+            submissionType: "auto",
+            autoSubmitReason: "maxTabSwitches",
+          },
+          { merge: true }
+        );
+      }
+
       setTimeout(() => {
         onSubmit();
       }, 2000); // Show the auto-submit popup for 2 seconds
     }
-  }, [proctorAutoSubmit, onSubmit, submitting]);
+  }, [proctorAutoSubmit, onSubmit, submitting, user, tabSwitchCount]);
 
   // Prevent copy and show warning
   useEffect(() => {
@@ -203,11 +248,24 @@ const QuizPage = ({
       setShowCopyWarning(false);
       setProctorAutoSubmit(true);
       setSubmitting(true);
+
+      // Update Firestore with auto-submit reason
+      if (user?.uid) {
+        setDoc(
+          doc(db, "quiz_responses", user.uid),
+          {
+            submissionType: "auto",
+            autoSubmitReason: "maxCopyAttempts",
+          },
+          { merge: true }
+        );
+      }
+
       setTimeout(() => {
         onSubmit();
       }, 2000); // Show the auto-submit popup for 2 seconds
     }
-  }, [copyAttemptCount, submitting, onSubmit]);
+  }, [copyAttemptCount, submitting, onSubmit, user]);
 
   // Restore copyAttemptCount from Firestore on mount (if present)
   useEffect(() => {
@@ -233,6 +291,19 @@ const QuizPage = ({
   const handleSubmit = () => {
     clearInterval(timerRef.current); // ⛔ stop timer immediately
     setSubmitting(true);
+
+    // Update Firestore with manual submission type
+    if (user?.uid) {
+      setDoc(
+        doc(db, "quiz_responses", user.uid),
+        {
+          submissionType: "manual",
+          autoSubmitReason: null,
+        },
+        { merge: true }
+      );
+    }
+
     onSubmit(); // this still reads timeLeft at this moment
   };
 

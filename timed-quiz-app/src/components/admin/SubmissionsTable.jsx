@@ -191,6 +191,21 @@ const SubmissionsTable = () => {
               </th>
               <th className="px-4 py-3 print:hidden text-center">Action</th>
               <th className="px-4 py-3 print:hidden text-center">Delete</th>
+              <th className="px-4 py-3 font-bold text-orange-700 bg-orange-50 text-center w-32">
+                Submission Type
+              </th>
+              <th className="px-4 py-3 font-bold text-orange-700 bg-orange-50 w-36 text-left">
+                Auto-Submit Reason
+              </th>
+              <th className="px-4 py-3 font-bold text-purple-700 bg-purple-50 text-center w-28">
+                Device Type
+              </th>
+              <th className="px-4 py-3 font-bold text-purple-700 bg-purple-50 text-center w-32">
+                Browser Info
+              </th>
+              <th className="px-4 py-3 font-bold text-purple-700 bg-purple-50 text-center w-32">
+                Screen Resolution
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -310,6 +325,61 @@ const SubmissionsTable = () => {
                   >
                     🗑️ Delete
                   </button>
+                </td>
+                <td className="px-4 py-2 text-center w-32">
+                  <span
+                    className={`font-medium px-3 py-1 rounded-full text-sm ${
+                      s.submissionType === "auto"
+                        ? "bg-orange-100 text-orange-800"
+                        : s.submissionType === "manual" &&
+                          s.completedAt < 1720900800000 // Before July 13, 2025 (timestamp for detection implementation)
+                        ? "bg-gray-100 text-gray-700"
+                        : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
+                    {s.submissionType === "auto"
+                      ? "Auto"
+                      : s.submissionType === "manual" &&
+                        s.completedAt < 1720900800000
+                      ? "Legacy"
+                      : "Manual"}
+                  </span>
+                </td>
+                <td className="px-4 py-2 w-36">
+                  {s.submissionType === "auto" ? (
+                    <span className="font-medium px-3 py-1 rounded-full text-sm bg-orange-50 text-orange-800 inline-block text-left">
+                      {s.autoSubmitReason === "timeExpired"
+                        ? "Timer Expired"
+                        : s.autoSubmitReason === "maxTabSwitches"
+                        ? "Max Tab Switches"
+                        : s.autoSubmitReason === "tabSwitchTimeout"
+                        ? "Tab Switch Timeout"
+                        : s.autoSubmitReason === "maxCopyAttempts"
+                        ? "Copy Attempts Limit"
+                        : "Unknown"}
+                    </span>
+                  ) : (
+                    <span className="text-center inline-block w-full">-</span>
+                  )}
+                </td>
+                <td className="px-4 py-2 text-center w-28">
+                  <span
+                    className={`font-medium px-3 py-1 rounded-full text-sm ${
+                      s.deviceType === "mobile"
+                        ? "bg-red-100 text-red-800"
+                        : s.deviceType === "tablet"
+                        ? "bg-yellow-100 text-yellow-800"
+                        : "bg-green-100 text-green-800"
+                    }`}
+                  >
+                    {s.deviceType || "Unknown"}
+                  </span>
+                </td>
+                <td className="px-4 py-2 text-center w-32">
+                  {s.browserInfo || "Unknown"}
+                </td>
+                <td className="px-4 py-2 text-center w-32">
+                  {s.deviceInfo?.screenResolution || "Legacy"}
                 </td>
               </tr>
             ))}
