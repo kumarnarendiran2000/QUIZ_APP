@@ -28,6 +28,7 @@ const BulkDeleteModal = () => {
       );
     }
 
+    // Clear selections and close modal
     setSelectedIds([]);
     setSelectAll(false);
     setBulkDeleteLoading(false);

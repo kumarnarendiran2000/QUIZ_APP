@@ -1,0 +1,169 @@
+// src/utils/quizStorage.js
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "./firebase";
+
+/**
+ * Generate a document ID for a quiz response
+ * Format: userUid_testMode_YYYYMMDD
+ */
+export function generateQuizDocId(userUid, testMode, date = null) {
+  // Use provided date or current date, adjusted to IST timezone
+  const useDate = date || new Date();
+  
+  // Add IST offset (UTC+5:30 = +330 minutes)
+  const istDate = new Date(useDate.getTime() + (330 * 60000));
+  const dateStr = istDate.toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD format
+  return `${userUid}_${testMode}_${dateStr}`;
+}
+
+/**
+ * Parse a document ID to extract components
+ * @param {string} docId - The document ID in format userUid_testMode_YYYYMMDD
+ * @returns {Object} Object with userUid, testMode, and date properties
+ */
+export function parseQuizDocId(docId) {
+  const parts = docId.split('_');
+  if (parts.length < 3) {
+    return { userUid: parts[0], testMode: "unknown", dateStr: "unknown" };
+  }
+  
+  // The last part is the date
+  const dateStr = parts[parts.length - 1];
+  // The second-to-last part is the test mode
+  const testMode = parts[parts.length - 2];
+  // Everything else is the userUid (in case it contained underscores)
+  const userUid = parts.slice(0, parts.length - 2).join('_');
+  
+  // Parse the date string back to a Date object if it's a valid format
+  let date = null;
+  if (/^\d{8}$/.test(dateStr)) {
+    const year = parseInt(dateStr.substring(0, 4));
+    const month = parseInt(dateStr.substring(4, 6)) - 1; // JS months are 0-indexed
+    const day = parseInt(dateStr.substring(6, 8));
+    date = new Date(year, month, day);
+  }
+  
+  return { userUid, testMode, dateStr, date };
+}
+
+/**
+ * Get quiz response for a user on a specific date and test mode
+ */
+export async function getQuizResponse(userUid, testMode, date = null) {
+  const docId = generateQuizDocId(userUid, testMode, date);
+  const ref = doc(db, "quiz_responses", docId);
+  const snap = await getDoc(ref);
+  
+  if (snap.exists()) {
+    return { id: snap.id, ...snap.data() };
+  }
+  return null;
+}
+
+/**
+ * Check if user has already taken any quiz with the specified test mode
+ * Returns the most recent quiz response or null
+ */
+export async function getAnyQuizWithTestMode(userUid, testMode) {
+  // We need to query by userUid and testMode
+  const q = query(
+    collection(db, "quiz_responses"),
+    where("userUid", "==", userUid),
+    where("testMode", "==", testMode)
+  );
+  
+  const querySnapshot = await getDocs(q);
+  let mostRecent = null;
+  
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+    // If we find a match and it's more recent than what we have (or we have nothing yet)
+    if (!mostRecent || (data.startedAt > mostRecent.startedAt)) {
+      mostRecent = { id: doc.id, ...data };
+    }
+  });
+  
+  return mostRecent;
+}
+
+/**
+ * Check if a user can take a quiz in the given test mode
+ * Rules:
+ * 1. Can't take same test mode on the same day
+ * 2. Can't take pre-test if already taken before
+ * 3. Can only take post-test if pre-test has been completed
+ * 
+ * @returns {Object} { canTake: boolean, existingQuiz: Object|null, reason: string|null }
+ */
+export async function canTakeQuiz(userUid, currentTestMode) {
+  // Check if user has taken this test mode today
+  const todayQuiz = await getQuizResponse(userUid, currentTestMode);
+  if (todayQuiz) {
+    return {
+      canTake: false,
+      existingQuiz: todayQuiz,
+      reason: "already_taken_today"
+    };
+  }
+  
+  // If this is a pre-test, check if user has taken any pre-test before
+  if (currentTestMode === "pre") {
+    const anyPreTest = await getAnyQuizWithTestMode(userUid, "pre");
+    if (anyPreTest) {
+      return {
+        canTake: false,
+        existingQuiz: anyPreTest,
+        reason: "pre_test_already_taken"
+      };
+    }
+  }
+  
+  // If this is a post-test, check if user has taken a pre-test
+  if (currentTestMode === "post") {
+    const anyPreTest = await getAnyQuizWithTestMode(userUid, "pre");
+    if (!anyPreTest) {
+      return {
+        canTake: false,
+        existingQuiz: null,
+        reason: "pre_test_required"
+      };
+    }
+    
+    // Check if post-test already taken
+    const anyPostTest = await getAnyQuizWithTestMode(userUid, "post");
+    if (anyPostTest) {
+      return {
+        canTake: false,
+        existingQuiz: anyPostTest,
+        reason: "post_test_already_taken"
+      };
+    }
+  }
+  
+  // User can take the quiz
+  return {
+    canTake: true,
+    existingQuiz: null,
+    reason: null
+  };
+}
+
+/**
+ * Save quiz response to Firestore with the new document ID format
+ */
+export async function saveQuizResponse(userUid, testMode, data, merge = true) {
+  const docId = generateQuizDocId(userUid, testMode);
+  const ref = doc(db, "quiz_responses", docId);
+  
+  // Always include userUid and testMode in the data
+  const enhancedData = {
+    ...data,
+    userUid,
+    testMode,
+    // Adjust to IST timezone (UTC+5:30 = +330 minutes)
+    quizDate: new Date(new Date().getTime() + (330 * 60000)).toISOString().split('T')[0] // YYYY-MM-DD format in IST
+  };
+  
+  await setDoc(ref, enhancedData, { merge });
+  return docId;
+}

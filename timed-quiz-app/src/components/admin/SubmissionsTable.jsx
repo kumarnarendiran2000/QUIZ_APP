@@ -1,6 +1,7 @@
 // src/components/admin/SubmissionsTable.jsx
 import React from "react";
 import useAdmin from "./hooks/useAdmin";
+import ExportControls from "./ExportControls";
 
 const SubmissionsTable = () => {
   const {
@@ -21,12 +22,46 @@ const SubmissionsTable = () => {
     setSelectedIds,
   } = useAdmin();
 
+  // State for date and test mode filters
+  const [dateFilter, setDateFilter] = React.useState("all");
+  const [testModeFilter, setTestModeFilter] = React.useState("all");
+
+  // Get unique dates and test modes
+  const uniqueDates = React.useMemo(() => {
+    const dates = [...new Set(submissions.map((s) => s.testDate || "Unknown"))];
+    return ["all", ...dates.sort()];
+  }, [submissions]);
+
+  const uniqueTestModes = React.useMemo(() => {
+    const modes = [
+      ...new Set(
+        submissions.map(
+          (s) => s.displayTestMode || s.testModeAtStart || "Unknown"
+        )
+      ),
+    ];
+    return ["all", ...modes.sort()];
+  }, [submissions]);
+
+  // Filter submissions based on selected filters
+  const filteredSubmissions = React.useMemo(() => {
+    return submissions.filter((s) => {
+      const matchesDate = dateFilter === "all" || s.testDate === dateFilter;
+      const matchesTestMode =
+        testModeFilter === "all" ||
+        s.displayTestMode === testModeFilter ||
+        s.testModeAtStart === testModeFilter;
+      return matchesDate && matchesTestMode;
+    });
+  }, [submissions, dateFilter, testModeFilter]);
+
   // Handle select all toggle
   const handleSelectAllRows = (e) => {
     const checked = e.target.checked;
     setSelectAll(checked);
     if (checked) {
-      setSelectedIds(submissions.map((s) => s.id));
+      // Only select IDs from the filtered submissions
+      setSelectedIds(filteredSubmissions.map((s) => s.id));
     } else {
       setSelectedIds([]);
     }
@@ -116,6 +151,48 @@ const SubmissionsTable = () => {
     }
   };
 
+  // Update selectAll state when filters or selections change
+  React.useEffect(() => {
+    // If there are no filtered submissions, ensure selectAll is false
+    if (filteredSubmissions.length === 0) {
+      setSelectAll(false);
+      return;
+    }
+
+    // Check if all filtered submissions are selected
+    const allSelected = filteredSubmissions.every((s) =>
+      selectedIds.includes(s.id)
+    );
+
+    setSelectAll(allSelected);
+  }, [filteredSubmissions, selectedIds, setSelectAll]);
+
+  // Effect to check if current filter has no results after deletion, and reset if needed
+  React.useEffect(() => {
+    // If there are submissions but none match the current filters, reset to "all"
+    if (submissions.length > 0 && filteredSubmissions.length === 0) {
+      setDateFilter("all");
+      setTestModeFilter("all");
+    }
+
+    // If there are no dates matching the current dateFilter, reset it
+    if (dateFilter !== "all" && !uniqueDates.includes(dateFilter)) {
+      setDateFilter("all");
+    }
+
+    // If there are no test modes matching the current testModeFilter, reset it
+    if (testModeFilter !== "all" && !uniqueTestModes.includes(testModeFilter)) {
+      setTestModeFilter("all");
+    }
+  }, [
+    submissions,
+    filteredSubmissions,
+    uniqueDates,
+    uniqueTestModes,
+    dateFilter,
+    testModeFilter,
+  ]);
+
   if (loading) {
     return (
       <p className="text-center text-gray-500 text-lg">
@@ -134,6 +211,103 @@ const SubmissionsTable = () => {
 
   return (
     <div>
+      {/* Filters */}
+      {/* Add animation style for the filter box */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+          @keyframes fadeInDown {
+            from {
+              opacity: 0;
+              transform: translateY(-10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
+          }
+          @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.3); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+          }
+          .animate-fade-in-down {
+            animation: fadeInDown 0.5s ease-out forwards;
+          }
+          .animate-pulse-once {
+            animation: pulse 2s ease-in-out;
+          }
+          .filter-transition {
+            transition: all 0.3s ease-in-out;
+          }
+          `,
+        }}
+      />
+
+      {/* Export controls with filtered submissions - Mobile optimized layout */}
+      <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <ExportControls filteredSubmissions={filteredSubmissions} />
+
+        {/* Container with adjusted width for the filter box */}
+        <div className="w-full md:w-2/3 md:ml-auto">
+          {/* Filter Box - Enhanced design with mobile optimization and animation */}
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-300 shadow-md w-full animate-fade-in-down animate-pulse-once">
+            {/* Top row with evenly distributed dropdowns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div className="flex flex-col">
+                <label className="font-bold text-blue-800 text-base mb-1">
+                  Test Date:
+                </label>
+                <select
+                  className="border border-blue-300 rounded-md p-2 bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 w-full filter-transition hover:border-blue-500"
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                >
+                  {uniqueDates.map((date) => (
+                    <option key={date} value={date}>
+                      {date === "all" ? "All Dates" : date}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-col">
+                <label className="font-bold text-blue-800 text-base mb-1">
+                  Test Mode:
+                </label>
+                <select
+                  className="border border-blue-300 rounded-md p-2 bg-white focus:ring-2 focus:ring-blue-400 focus:border-blue-400 w-full filter-transition hover:border-blue-500"
+                  value={testModeFilter}
+                  onChange={(e) => setTestModeFilter(e.target.value)}
+                >
+                  {uniqueTestModes.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {mode === "all"
+                        ? "All Modes"
+                        : mode.charAt(0).toUpperCase() + mode.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Bottom row with counter centered */}
+            <div className="flex justify-center">
+              <div className="text-center text-sm font-semibold text-blue-700 bg-white bg-opacity-70 p-2 rounded-md border border-blue-100 shadow-sm w-full sm:w-1/2">
+                Showing{" "}
+                <span className="font-bold text-blue-900">
+                  {filteredSubmissions.length}
+                </span>{" "}
+                of{" "}
+                <span className="font-bold text-blue-900">
+                  {submissions.length}
+                </span>{" "}
+                submissions
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Mobile-friendly notice */}
       <div className="md:hidden mb-4 bg-blue-50 p-4 rounded-lg border border-blue-200 text-sm">
         <p className="font-medium text-blue-800">
@@ -209,12 +383,19 @@ const SubmissionsTable = () => {
             </tr>
           </thead>
           <tbody>
-            {submissions.map((s, idx) => (
+            {filteredSubmissions.map((s, idx) => (
               <tr
                 key={s.id}
                 className={`border-t hover:bg-gray-50 text-gray-800 ${
                   selectedIds.includes(s.id) ? "bg-blue-50" : ""
+                } ${
+                  s.isIncomplete ? "bg-yellow-50 border border-yellow-200" : ""
                 }`}
+                title={
+                  s.isIncomplete
+                    ? "Incomplete submission - may be missing data"
+                    : ""
+                }
               >
                 <td className="px-2 py-2">
                   <input
@@ -339,10 +520,9 @@ const SubmissionsTable = () => {
                   >
                     {s.submissionType === "auto"
                       ? "Auto"
-                      : s.submissionType === "manual" &&
-                        s.completedAt < 1720900800000
-                      ? "Legacy"
-                      : "Manual"}
+                      : s.submissionType === "manual"
+                      ? "Manual"
+                      : "Unknown"}
                   </span>
                 </td>
                 <td className="px-4 py-2 w-36">
@@ -376,16 +556,19 @@ const SubmissionsTable = () => {
                   </span>
                 </td>
                 <td className="px-4 py-2 text-center w-32">
-                  {s.browserInfo || "Unknown"}
+                  {s.browser || s.browserInfo || "Unknown"}
                 </td>
                 <td className="px-4 py-2 text-center w-32">
-                  {s.deviceInfo?.screenResolution || "Legacy"}
+                  {s.screenResolution ||
+                    s.deviceInfo?.screenResolution ||
+                    "Unknown"}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+      {/* Removed duplicate export controls that were here */}
     </div>
   );
 };

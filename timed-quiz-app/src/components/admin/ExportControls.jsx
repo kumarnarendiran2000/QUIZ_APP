@@ -4,18 +4,20 @@ import useAdmin from "./hooks/useAdmin";
 import { exportSubmissionsToExcel } from "../../utils/exportToExcel";
 import { exportSubmissionsToPDF } from "../../utils/exportToPDF";
 
-const ExportControls = () => {
+const ExportControls = ({ filteredSubmissions }) => {
   const { submissions, toggleSort, isSorted, setShowMobileSnackbar } =
     useAdmin();
 
-  // Export to Excel handler
+  // Export to Excel handler - use filteredSubmissions if provided, otherwise use all submissions
   const handleExportToExcel = () => {
-    exportSubmissionsToExcel(submissions);
+    const dataToExport = filteredSubmissions || submissions;
+    exportSubmissionsToExcel(dataToExport);
   };
 
-  // Export to PDF handler
+  // Export to PDF handler - use filteredSubmissions if provided, otherwise use all submissions
   const handleExportToPDF = () => {
-    exportSubmissionsToPDF(submissions);
+    const dataToExport = filteredSubmissions || submissions;
+    exportSubmissionsToPDF(dataToExport);
     if (window.innerWidth <= 768) {
       setShowMobileSnackbar(true);
       setTimeout(() => setShowMobileSnackbar(false), 15000); // Increased to 15 seconds

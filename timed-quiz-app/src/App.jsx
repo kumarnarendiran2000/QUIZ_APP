@@ -7,7 +7,7 @@ import ResultPage from "./components/ResultPage";
 import AdminDashboard from "./components/AdminDashboard";
 import Layout from "./components/Layout";
 import { db } from "./utils/firebase";
-import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { questions } from "./data/questions";
 
 const QUIZ_DURATION = 1200; // 20 minutes in seconds
@@ -60,107 +60,156 @@ const App = () => {
       console.error("Error checking admin status:", err);
     }
 
-    const ref = doc(db, "quiz_responses", loggedInUser.uid);
-    const snap = await getDoc(ref);
+    // Import the quizStorage utilities
+    const { canTakeQuiz, getQuizResponse } = await import(
+      "./utils/quizStorage"
+    );
 
-    if (snap.exists()) {
-      const data = snap.data();
+    // Get current test mode from Firebase
+    let currentTestMode = "post";
+    try {
+      const refSettings = doc(db, "quiz_settings", "default");
+      const snap = await getDoc(refSettings);
+      if (snap.exists()) {
+        currentTestMode = snap.data().testMode || "post";
+      }
+    } catch (error) {
+      console.error("Error fetching test mode:", error);
+    }
 
-      // If quiz was submitted
-      if (data.score !== undefined) {
+    // Check if user can take the quiz in current test mode
+    const { canTake, existingQuiz, reason } = await canTakeQuiz(
+      loggedInUser.uid,
+      currentTestMode
+    );
+
+    // If user has a quiz for today in current mode or has an existing quiz that prevents taking a new one
+    if (!canTake && existingQuiz) {
+      // Load the existing quiz data and show results
+      setUser(loggedInUser);
+      setUserInfo({
+        name: existingQuiz.name,
+        mobile: existingQuiz.mobile,
+        regno: existingQuiz.regno || "",
+      });
+      setAnswers(existingQuiz.answers || []);
+      setDetailedResults(existingQuiz.detailedResults || []);
+      setQuizDuration(existingQuiz.quizDuration || "N/A");
+      setTestModeAtStart(existingQuiz.testMode || currentTestMode);
+      setStep("result");
+      return;
+    }
+
+    // Check if there's an in-progress quiz for today's date and current test mode
+    const todayQuiz = await getQuizResponse(loggedInUser.uid, currentTestMode);
+
+    if (todayQuiz && todayQuiz.startedAt && !todayQuiz.completedAt) {
+      // Quiz already started today but not completed
+      const elapsed = Math.floor((Date.now() - todayQuiz.startedAt) / 1000);
+      const remaining = Math.max(QUIZ_DURATION - elapsed, 0);
+
+      if (remaining > 0) {
         setUser(loggedInUser);
         setUserInfo({
-          name: data.name,
-          mobile: data.mobile,
-          regno: data.regno || "",
+          name: todayQuiz.name || "",
+          mobile: todayQuiz.mobile || "",
+          regno: todayQuiz.regno || "",
         });
-        setAnswers(data.answers || []);
-        setDetailedResults(data.detailedResults || []);
-        setQuizDuration(data.quizDuration || "N/A");
-        setTestModeAtStart(data.testModeAtStart || "post");
-        setStep("result");
+
+        // Normalize answers with nulls
+        const normalized = Array(questions.length).fill(null);
+        const saved = todayQuiz.answers || [];
+        for (let i = 0; i < saved.length; i++) {
+          normalized[i] = saved[i];
+        }
+        setAnswers(normalized);
+
+        setTimeLeft(remaining);
+        // On reload/relogin, restore the values from Firestore
+        setTabSwitchCount(todayQuiz.tabSwitchCount || 0);
+        setCopyAttemptCount(todayQuiz.copyAttemptCount || 0);
+
+        // Import device detection utilities
+        const { detectDeviceType, getBrowserInfo, getScreenResolution } =
+          await import("./utils/deviceDetector");
+
+        // Try to get device information with error handling
+        let deviceInfo = {
+          deviceType: todayQuiz.deviceType || "Unknown",
+          browserInfo: todayQuiz.browserInfo || "Unknown",
+          screenResolution: todayQuiz.screenResolution || "Unknown",
+        };
+
+        try {
+          // Only update if existing values are missing or "Unknown"
+          if (!todayQuiz.deviceType || todayQuiz.deviceType === "Unknown") {
+            deviceInfo.deviceType = detectDeviceType();
+          }
+          if (!todayQuiz.browserInfo || todayQuiz.browserInfo === "Unknown") {
+            deviceInfo.browserInfo = getBrowserInfo();
+          }
+          if (
+            !todayQuiz.screenResolution ||
+            todayQuiz.screenResolution === "Unknown"
+          ) {
+            deviceInfo.screenResolution = getScreenResolution();
+          }
+        } catch (error) {
+          console.error("Error detecting device info on reload:", error);
+        }
+
+        // Import saveQuizResponse function
+        const { saveQuizResponse } = await import("./utils/quizStorage");
+
+        // Update device information in Firestore
+        await saveQuizResponse(loggedInUser.uid, currentTestMode, {
+          ...deviceInfo,
+          // Keep existing submission type and reason if present
+          submissionType: todayQuiz.submissionType || "manual",
+          autoSubmitReason: todayQuiz.autoSubmitReason || null,
+        });
+
+        if (
+          todayQuiz.tabSwitchCount >= 10 ||
+          todayQuiz.copyAttemptCount >= 10
+        ) {
+          setStep("quiz");
+          return;
+        }
+        setStep("quiz");
         return;
       }
+    }
 
-      // If quiz already started and not submitted
-      if (data.startedAt) {
-        const elapsed = Math.floor((Date.now() - data.startedAt) / 1000);
-        const remaining = Math.max(QUIZ_DURATION - elapsed, 0);
-
-        if (remaining > 0) {
+    // If user cannot take quiz in current mode
+    if (!canTake) {
+      if (reason === "pre_test_required") {
+        // Show message that pre-test is required before post-test
+        alert("You need to complete a pre-test before taking a post-test.");
+      } else if (reason === "post_test_already_taken") {
+        // Load the existing post-test quiz and show results
+        const existingPostTest = await getQuizResponse(
+          loggedInUser.uid,
+          "post"
+        );
+        if (existingPostTest) {
           setUser(loggedInUser);
           setUserInfo({
-            name: data.name || "",
-            mobile: data.mobile || "",
-            regno: data.regno || "",
+            name: existingPostTest.name,
+            mobile: existingPostTest.mobile,
+            regno: existingPostTest.regno || "",
           });
-
-          // Normalize answers with nulls
-          const normalized = Array(questions.length).fill(null);
-          const saved = data.answers || [];
-          for (let i = 0; i < saved.length; i++) {
-            normalized[i] = saved[i];
-          }
-          setAnswers(normalized);
-
-          setTimeLeft(remaining);
-          // On reload/relogin, restore the value from Firestore as-is (do not increment)
-          const restoredTabSwitchCount = data.tabSwitchCount || 0;
-          setTabSwitchCount(restoredTabSwitchCount);
-          const restoredCopyAttemptCount = data.copyAttemptCount || 0;
-          setCopyAttemptCount(restoredCopyAttemptCount);
-
-          // Ensure device info is captured on return/reload
-          const { detectDeviceType, getBrowserInfo, getScreenResolution } =
-            await import("./utils/deviceDetector");
-
-          // Try to get device information with error handling
-          let deviceInfo = {
-            deviceType: data.deviceType || "Unknown",
-            browserInfo: data.browserInfo || "Unknown",
-            screenResolution: data.screenResolution || "Unknown",
-          };
-
-          try {
-            // Only update if existing values are missing or "Unknown"
-            if (!data.deviceType || data.deviceType === "Unknown") {
-              deviceInfo.deviceType = detectDeviceType();
-            }
-            if (!data.browserInfo || data.browserInfo === "Unknown") {
-              deviceInfo.browserInfo = getBrowserInfo();
-            }
-            if (!data.screenResolution || data.screenResolution === "Unknown") {
-              deviceInfo.screenResolution = getScreenResolution();
-            }
-
-            console.log("Reloading with device info:", deviceInfo);
-          } catch (error) {
-            console.error("Error detecting device info on reload:", error);
-          }
-
-          // Update device information in Firestore to ensure it's always available
-          await setDoc(
-            doc(db, "quiz_responses", loggedInUser.uid),
-            {
-              ...deviceInfo,
-              // Keep existing submission type and reason if present
-              submissionType: data.submissionType || "manual",
-              autoSubmitReason: data.autoSubmitReason || null,
-            },
-            { merge: true }
-          );
-
-          if (restoredTabSwitchCount >= 10 || restoredCopyAttemptCount >= 10) {
-            setStep("quiz");
-            return;
-          }
-          setStep("quiz");
+          setAnswers(existingPostTest.answers || []);
+          setDetailedResults(existingPostTest.detailedResults || []);
+          setQuizDuration(existingPostTest.quizDuration || "N/A");
+          setTestModeAtStart("post");
+          setStep("result");
           return;
         }
       }
     }
 
-    // New user (non-admin)
+    // New user who can take the quiz or new quiz attempt allowed
     setUser(loggedInUser);
     setStep("form");
   };
@@ -169,7 +218,7 @@ const App = () => {
   const startQuiz = async () => {
     const initialAnswers = Array(questions.length).fill(null);
 
-    // Import device detector functions at the top level to ensure it's always available
+    // Import device detector functions
     const { detectDeviceType, getBrowserInfo, getScreenResolution } =
       await import("./utils/deviceDetector");
 
@@ -205,51 +254,47 @@ const App = () => {
     setTestModeAtStart(mode);
 
     if (user) {
-      const ref = doc(db, "quiz_responses", user.uid);
+      // Import the saveQuizResponse function
+      const { saveQuizResponse, getQuizResponse } = await import(
+        "./utils/quizStorage"
+      );
 
-      // First check if the user already has a startedAt timestamp
-      const existingSnap = await getDoc(ref);
-      const currentStartedAt =
-        existingSnap.exists() && existingSnap.data().startedAt;
+      // Check if the user has already started a quiz today
+      const existingQuiz = await getQuizResponse(user.uid, mode);
+      const currentStartedAt = existingQuiz?.startedAt;
 
-      // Only update device info if we have valid values
+      // Prepare device data
       const deviceData = {
         deviceType:
           deviceType !== "Unknown"
             ? deviceType
-            : (existingSnap.exists() && existingSnap.data().deviceType) ||
-              "Unknown",
+            : existingQuiz?.deviceType || "Unknown",
         browserInfo:
           browserInfo !== "Unknown"
             ? browserInfo
-            : (existingSnap.exists() && existingSnap.data().browserInfo) ||
-              "Unknown",
+            : existingQuiz?.browserInfo || "Unknown",
         screenResolution:
           screenResolution !== "Unknown"
             ? screenResolution
-            : (existingSnap.exists() && existingSnap.data().screenResolution) ||
-              "Unknown",
+            : existingQuiz?.screenResolution || "Unknown",
       };
 
-      await setDoc(
-        ref,
-        {
-          name: userInfo.name,
-          email: user.email,
-          mobile: userInfo.mobile,
-          regno: userInfo.regno,
-          // Only set startedAt if it doesn't exist yet - never overwrite it
-          ...(currentStartedAt ? {} : { startedAt: Date.now() }),
-          answers: initialAnswers,
-          testModeAtStart: mode,
-          // Add device information
-          ...deviceData,
-          // Initialize submission type
-          submissionType: "manual", // Will be updated to "auto" if auto-submitted
-          autoSubmitReason: null, // Will be filled if auto-submitted
-        },
-        { merge: true }
-      );
+      // Save the quiz with our new format
+      await saveQuizResponse(user.uid, mode, {
+        name: userInfo.name,
+        email: user.email,
+        mobile: userInfo.mobile,
+        regno: userInfo.regno,
+        // Only set startedAt if it doesn't exist yet - never overwrite it
+        ...(currentStartedAt ? {} : { startedAt: Date.now() }),
+        answers: initialAnswers,
+        testModeAtStart: mode,
+        // Add device information
+        ...deviceData,
+        // Initialize submission type
+        submissionType: "manual", // Will be updated to "auto" if auto-submitted
+        autoSubmitReason: null, // Will be filled if auto-submitted
+      });
     }
 
     setTimeLeft(QUIZ_DURATION);
@@ -272,17 +317,24 @@ const App = () => {
 
     const correctAnswers = metadataSnap.data().correctAnswers;
 
+    // Import the quizStorage functions
+    const { getQuizResponse, saveQuizResponse } = await import(
+      "./utils/quizStorage"
+    );
+
+    // Get current test mode
+    const currentTestMode = testModeAtStart || "post";
+
     // Get current submission data to preserve auto-submission status
     let submissionType = "manual";
     let autoSubmitReason = null;
 
     if (user) {
-      const userRef = doc(db, "quiz_responses", user.uid);
-      const userSnap = await getDoc(userRef);
+      const existingQuiz = await getQuizResponse(user.uid, currentTestMode);
 
-      if (userSnap.exists()) {
-        submissionType = userSnap.data().submissionType || "manual";
-        autoSubmitReason = userSnap.data().autoSubmitReason || null;
+      if (existingQuiz) {
+        submissionType = existingQuiz.submissionType || "manual";
+        autoSubmitReason = existingQuiz.autoSubmitReason || null;
       }
     }
 
@@ -316,13 +368,12 @@ const App = () => {
     let timeTakenSec;
 
     if (user) {
-      // Get the existing document to read startedAt
-      const userRef = doc(db, "quiz_responses", user.uid);
-      const userSnap = await getDoc(userRef);
+      // Get the existing quiz to read startedAt
+      const existingQuiz = await getQuizResponse(user.uid, currentTestMode);
 
-      if (userSnap.exists() && userSnap.data().startedAt) {
+      if (existingQuiz && existingQuiz.startedAt) {
         // Calculate time based on server timestamps (startedAt to now)
-        const startedAtTime = userSnap.data().startedAt;
+        const startedAtTime = existingQuiz.startedAt;
         const completedAtTime = Date.now();
 
         // Use server calculation with a safeguard (0 to QUIZ_DURATION)
@@ -352,29 +403,25 @@ const App = () => {
     const quizDuration = `${mins}m ${secs}s`;
 
     if (user) {
-      const ref = doc(db, "quiz_responses", user.uid);
-      await setDoc(
-        ref,
-        {
-          name: userInfo.name,
-          email: user.email,
-          mobile: userInfo.mobile,
-          regno: userInfo.regno,
-          answers: finalAnswers,
-          answeredCount,
-          unansweredCount,
-          score: correctCount,
-          correctCount,
-          wrongCount: questions.length - correctCount,
-          detailedResults,
-          quizDuration,
-          completedAt: Date.now(), // Optional: tie-breaker
-          // Preserve submission type and reason
-          submissionType,
-          autoSubmitReason,
-        },
-        { merge: true }
-      );
+      // Save using our new format
+      await saveQuizResponse(user.uid, currentTestMode, {
+        name: userInfo.name,
+        email: user.email,
+        mobile: userInfo.mobile,
+        regno: userInfo.regno,
+        answers: finalAnswers,
+        answeredCount,
+        unansweredCount,
+        score: correctCount,
+        correctCount,
+        wrongCount: questions.length - correctCount,
+        detailedResults,
+        quizDuration,
+        completedAt: Date.now(),
+        // Preserve submission type and reason
+        submissionType,
+        autoSubmitReason,
+      });
 
       setDetailedResults(detailedResults);
       setQuizDuration(quizDuration);

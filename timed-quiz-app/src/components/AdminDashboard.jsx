@@ -10,8 +10,8 @@ import ResultView from "./admin/ResultView";
 import DeleteModal from "./admin/DeleteModal";
 import BulkDeleteModal from "./admin/BulkDeleteModal";
 import EmailToast from "./admin/EmailToast";
-import ExportControls from "./admin/ExportControls";
 import NavigationControls from "./admin/NavigationControls";
+import DataMigration from "./admin/DataMigration";
 
 // Main component that uses the context
 const AdminDashboardContent = () => {
@@ -70,6 +70,10 @@ const AdminDashboardContent = () => {
         {/* Test Mode Selector */}
         <TestModeSelector />
 
+        {/* Data Migration Tool - Remove after migration is complete */}
+        {/* Uncomment to use when needed, then remove after migration */}
+        {/* <DataMigration /> */}
+
         {/* Visualizations Button */}
         <div className="mb-8 flex justify-end print:hidden">
           <button
@@ -103,9 +107,6 @@ const AdminDashboardContent = () => {
           </div>
         )}
 
-        {/* Export Controls */}
-        <ExportControls />
-
         {/* Main content area - submissions table or loading state */}
         {loading ? (
           <p className="text-center text-gray-500 text-lg">
@@ -130,6 +131,9 @@ const AdminDashboardContent = () => {
 
         {/* Bulk Delete Confirmation Modal */}
         {showBulkDeleteModal && <BulkDeleteModal />}
+
+        {/* Data Migration Component - Uncomment to use
+        <DataMigration /> */}
       </div>
     </>
   );

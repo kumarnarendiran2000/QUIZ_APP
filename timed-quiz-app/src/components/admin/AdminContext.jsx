@@ -85,13 +85,58 @@ export const AdminProvider = ({ children }) => {
     const unsubscribe = onSnapshot(
       collection(db, "quiz_responses"),
       (snapshot) => {
-        const data = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        const filtered = data.filter((entry) => entry.score !== undefined);
-        setSubmissions(filtered);
-        setOriginalOrder(filtered);
+        const data = snapshot.docs.map((doc) => {
+          // Parse doc ID to extract test mode and date
+          const docId = doc.id;
+          let testMode = null;
+          let dateStr = null;
+
+          // Extract test mode and date from document ID if available
+          if (docId.includes("_")) {
+            const parts = docId.split("_");
+            if (parts.length >= 3) {
+              testMode = parts[parts.length - 2]; // Second-to-last part is test mode
+              dateStr = parts[parts.length - 1]; // Last part is date
+
+              // Format date string for display (YYYYMMDD -> YYYY-MM-DD)
+              if (/^\d{8}$/.test(dateStr)) {
+                const year = dateStr.substring(0, 4);
+                const month = dateStr.substring(4, 6);
+                const day = dateStr.substring(6, 8);
+                dateStr = `${year}-${month}-${day}`;
+              }
+            }
+          }
+
+          const docData = doc.data();
+          return {
+            id: doc.id,
+            // Add extracted fields if available
+            testDate: dateStr || "Unknown",
+            displayTestMode:
+              testMode ||
+              docData.testModeAtStart ||
+              docData.testMode ||
+              "Unknown",
+            // Ensure all entries have these fields, even if they're missing
+            name: docData.name || "-",
+            email: docData.email || "-",
+            regno: docData.regno || "-",
+            mobile: docData.mobile || "-",
+            score: docData.score !== undefined ? docData.score : "-",
+            quizDuration: docData.quizDuration || "-",
+            completedAt: docData.completedAt || "-",
+            // Include the rest of the data
+            ...docData,
+            // Flag for incomplete submissions
+            isIncomplete:
+              docData.score === undefined || docData.completedAt === undefined,
+          };
+        });
+
+        // Include all records, don't filter by score
+        setSubmissions(data);
+        setOriginalOrder(data);
         setLoading(false);
       },
       (error) => {

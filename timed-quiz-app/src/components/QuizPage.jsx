@@ -1,8 +1,10 @@
 // src/components/QuizPage.jsx
 import React, { useEffect, useState, useRef } from "react";
 import { questions } from "../data/questions";
-import { doc, setDoc, getDoc } from "firebase/firestore";
-import { db } from "../utils/firebase";
+import {
+  handleAutoSubmit,
+  updateSubmissionStatus,
+} from "../utils/QuizPageHelpers";
 
 const QuizPage = ({
   answers,
@@ -39,11 +41,18 @@ const QuizPage = ({
         // Retrieve the startedAt value from Firestore
         (async () => {
           try {
-            const userRef = doc(db, "quiz_responses", user.uid);
-            const userSnap = await getDoc(userRef);
+            // Import here to avoid circular dependencies
+            const { getTestMode } = await import("../utils/quizSettings");
+            const { getQuizResponse } = await import("../utils/quizStorage");
 
-            if (userSnap.exists() && userSnap.data().startedAt) {
-              startedAtRef.current = userSnap.data().startedAt;
+            // Get current test mode
+            const currentTestMode = await getTestMode();
+
+            // Get quiz response using the new format
+            const quizData = await getQuizResponse(user.uid, currentTestMode);
+
+            if (quizData && quizData.startedAt) {
+              startedAtRef.current = quizData.startedAt;
             }
           } catch (error) {
             console.error("Error fetching startedAt:", error);
@@ -79,17 +88,7 @@ const QuizPage = ({
 
       // Record time expiry auto-submission reason
       if (user?.uid) {
-        setDoc(
-          doc(db, "quiz_responses", user.uid),
-          {
-            submissionType: "auto",
-            autoSubmitReason: "timeExpired",
-          },
-          { merge: true }
-        ).then(() => {
-          // Only submit after the status is updated in Firestore
-          onSubmit();
-        });
+        handleAutoSubmit(user, "timeExpired", onSubmit);
       } else {
         onSubmit();
       }
@@ -137,10 +136,11 @@ const QuizPage = ({
           const newCount = prev + 1;
           // Save to Firestore
           if (user?.uid) {
-            setDoc(
-              doc(db, "quiz_responses", user.uid),
-              { tabSwitchCount: newCount },
-              { merge: true }
+            // Use the imported functions
+            import("../utils/QuizPageHelpers").then(
+              ({ updateTabSwitchCount }) => {
+                updateTabSwitchCount(user, newCount);
+              }
             );
           }
           return newCount;
@@ -172,14 +172,7 @@ const QuizPage = ({
 
               // Update Firestore with auto-submit reason for tab switching timeout
               if (user?.uid) {
-                setDoc(
-                  doc(db, "quiz_responses", user.uid),
-                  {
-                    submissionType: "auto",
-                    autoSubmitReason: "tabSwitchTimeout",
-                  },
-                  { merge: true }
-                );
+                updateSubmissionStatus(user, "auto", "tabSwitchTimeout");
               }
 
               setTimeout(() => {
@@ -204,14 +197,7 @@ const QuizPage = ({
 
       // Update Firestore with auto-submit reason for max tab switches reached
       if (user?.uid && tabSwitchCount >= MAX_TAB_SWITCHES) {
-        setDoc(
-          doc(db, "quiz_responses", user.uid),
-          {
-            submissionType: "auto",
-            autoSubmitReason: "maxTabSwitches",
-          },
-          { merge: true }
-        );
+        updateSubmissionStatus(user, "auto", "maxTabSwitches");
       }
 
       setTimeout(() => {
@@ -228,10 +214,11 @@ const QuizPage = ({
         const newCount = prev + 1;
         // Save to Firestore
         if (user?.uid) {
-          setDoc(
-            doc(db, "quiz_responses", user.uid),
-            { copyAttemptCount: newCount },
-            { merge: true }
+          // Use the imported functions
+          import("../utils/QuizPageHelpers").then(
+            ({ updateCopyAttemptCount }) => {
+              updateCopyAttemptCount(user, newCount);
+            }
           );
         }
         return newCount;
@@ -251,14 +238,7 @@ const QuizPage = ({
 
       // Update Firestore with auto-submit reason
       if (user?.uid) {
-        setDoc(
-          doc(db, "quiz_responses", user.uid),
-          {
-            submissionType: "auto",
-            autoSubmitReason: "maxCopyAttempts",
-          },
-          { merge: true }
-        );
+        updateSubmissionStatus(user, "auto", "maxCopyAttempts");
       }
 
       setTimeout(() => {
@@ -280,11 +260,8 @@ const QuizPage = ({
     setAnswers(updated);
 
     if (user?.uid) {
-      await setDoc(
-        doc(db, "quiz_responses", user.uid),
-        { answers: updated },
-        { merge: true }
-      );
+      const { updateAnswer } = await import("../utils/QuizPageHelpers");
+      await updateAnswer(user, updated);
     }
   };
 
@@ -294,17 +271,18 @@ const QuizPage = ({
 
     // Update Firestore with manual submission type
     if (user?.uid) {
-      setDoc(
-        doc(db, "quiz_responses", user.uid),
-        {
-          submissionType: "manual",
-          autoSubmitReason: null,
-        },
-        { merge: true }
-      );
+      // Update device info first
+      import("../utils/QuizPageHelpers").then(({ updateDeviceInfo }) => {
+        updateDeviceInfo(user).then(() => {
+          // Then update submission type
+          updateSubmissionStatus(user, "manual", null).then(() => {
+            onSubmit(); // this still reads timeLeft at this moment
+          });
+        });
+      });
+    } else {
+      onSubmit();
     }
-
-    onSubmit(); // this still reads timeLeft at this moment
   };
 
   // When user returns and clicks OK (if under limit)

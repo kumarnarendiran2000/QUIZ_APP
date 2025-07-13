@@ -73,7 +73,55 @@ exports.sendQuizResultEmail = onCall(
       let email = userEmail || "", name = userName || "", regno = "", mobile = "", quizDuration = "", isPostTest = false, score = 0, correct = 0, wrong = 0, total = 0, details = [];
       try {
         console.log(`Fetching quiz response for user ID: ${targetUserId}`);
-        const userDoc = await admin.firestore().collection("quiz_responses").doc(targetUserId).get();
+        
+        // Try to find the document with the new format first (userUid_testMode_YYYYMMDD)
+        // Get today's date in YYYYMMDD format
+        const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        const testMode = testModeFromFrontend || "post"; // Default to post-test if not specified
+        const newFormatDocId = `${targetUserId}_${testMode}_${today}`;
+        
+        console.log(`Trying document ID: ${newFormatDocId}`);
+        let userDoc = await admin.firestore().collection("quiz_responses").doc(newFormatDocId).get();
+        
+        // If not found with today's date, query for any document with this user ID
+        if (!userDoc.exists) {
+          console.log(`Document not found with ID: ${newFormatDocId}. Searching for any document with user ID: ${targetUserId}`);
+          
+          // Query for documents that start with the user ID followed by underscore
+          const querySnapshot = await admin.firestore()
+            .collection("quiz_responses")
+            .where(admin.firestore.FieldPath.documentId(), ">=", targetUserId + "_")
+            .where(admin.firestore.FieldPath.documentId(), "<", targetUserId + "_\uf8ff")
+            .get();
+            
+          // Sort by timestamp to get the most recent one
+          if (!querySnapshot.empty) {
+            let mostRecent = null;
+            let mostRecentTimestamp = 0;
+            
+            querySnapshot.forEach(doc => {
+              const data = doc.data();
+              const timestamp = data.startedAt || data.completedAt || 0;
+              
+              // If this is newer than what we have, or we have nothing yet
+              if (mostRecent === null || timestamp > mostRecentTimestamp) {
+                mostRecent = doc;
+                mostRecentTimestamp = timestamp;
+              }
+            });
+            
+            if (mostRecent) {
+              userDoc = mostRecent;
+              console.log(`Found document with ID: ${userDoc.id}`);
+            }
+          }
+          
+          // Fallback to original document ID if no new format documents found
+          if (!userDoc.exists) {
+            console.log(`No new format documents found. Falling back to original document ID: ${targetUserId}`);
+            userDoc = await admin.firestore().collection("quiz_responses").doc(targetUserId).get();
+          }
+        }
         
         if (userDoc.exists) {
           const data = userDoc.data();
@@ -83,7 +131,7 @@ exports.sendQuizResultEmail = onCall(
           regno = data.regno || "";
           mobile = data.mobile || "";
           quizDuration = quizDurationFromFrontend || data.quizDuration || "";
-          isPostTest = testModeFromFrontend === "post" || (testModeFromFrontend === undefined && (data.isPostTest !== undefined ? data.isPostTest : true));
+          isPostTest = testModeFromFrontend === "post" || (testModeFromFrontend === undefined && (data.testMode === "post" || data.isPostTest === true));
           score = data.score !== undefined ? data.score : (data.correctCount !== undefined ? data.correctCount : 0);
           correct = data.correct !== undefined ? data.correct : (data.correctCount !== undefined ? data.correctCount : 0);
           wrong = data.wrong !== undefined ? data.wrong : (data.wrongCount !== undefined ? data.wrongCount : 0);
@@ -127,11 +175,10 @@ exports.sendQuizResultEmail = onCall(
       } else {
         // Fetch user answers from Firestore as fallback
         try {
-          // Use targetUserId here instead of request.auth.uid to ensure consistency
-          const userData = await admin.firestore().collection("quiz_responses").doc(targetUserId).get();
-          if (userData.exists) {
-            userAnswers = userData.data().answers || [];
-            console.log(`Using ${userAnswers.length} answers from Firestore for user ${targetUserId}`);
+          // We already have the document, just use it
+          if (userDoc && userDoc.exists) {
+            userAnswers = userDoc.data().answers || [];
+            console.log(`Using ${userAnswers.length} answers from Firestore for document ${userDoc.id}`);
           }
         } catch (e) {
           console.error(`Failed to fetch user answers from Firestore for user ${targetUserId}:`, e);
@@ -458,9 +505,9 @@ exports.sendQuizResultEmail = onCall(
         // Send the email
         await sgMail.send(msg);
         
-        console.log(`Updating Firestore record for user ID: ${targetUserId} to mark email as sent`);
+        console.log(`Updating Firestore record for document ID: ${userDoc.id} to mark email as sent`);
         // Update Firestore to mark that email has been sent for this attempt
-        await admin.firestore().collection("quiz_responses").doc(targetUserId).update({
+        await admin.firestore().collection("quiz_responses").doc(userDoc.id).update({
           emailSent: true,
           emailSentAt: admin.firestore.FieldValue.serverTimestamp()
         });
