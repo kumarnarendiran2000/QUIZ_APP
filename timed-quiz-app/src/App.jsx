@@ -497,6 +497,11 @@ const App = () => {
     const quizDuration = `${mins}m ${secs}s`;
 
     if (user) {
+      // Add device information for the submission
+      const { detectDeviceType, getBrowserInfo, getScreenResolution } = await import(
+        "./utils/deviceDetector"
+      );
+      
       // Save using our new format
       await saveQuizResponse(user.uid, currentTestMode, {
         name: userInfo.name,
@@ -515,6 +520,10 @@ const App = () => {
         // Preserve submission type and reason
         submissionType,
         autoSubmitReason,
+        // Add device information
+        deviceType: detectDeviceType(),
+        browserInfo: getBrowserInfo(),
+        screenResolution: getScreenResolution(),
       });
 
       setDetailedResults(detailedResults);

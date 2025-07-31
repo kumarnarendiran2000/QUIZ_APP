@@ -72,6 +72,8 @@ exports.sendQuizResultEmail = onCall(
 
       // Always fetch quiz response from Firestore for reliability
       let email = userEmail || "", name = userName || "", regno = "", mobile = "", quizDuration = "", isPostTest = false, score = 0, correct = 0, wrong = 0, total = 0, details = [];
+      // Declare userDoc at the top level of the function so it's available in the email sending block
+      let userDoc;
       try {
         console.log(`Fetching quiz response for user ID: ${targetUserId}`);
         
@@ -82,7 +84,7 @@ exports.sendQuizResultEmail = onCall(
         const newFormatDocId = `${targetUserId}_${testMode}_${today}`;
         
         console.log(`Trying document ID: ${newFormatDocId}`);
-        let userDoc = await admin.firestore().collection("quiz_responses").doc(newFormatDocId).get();
+        userDoc = await admin.firestore().collection("quiz_responses").doc(newFormatDocId).get();
         
         // If not found with today's date, query for any document with this user ID
         if (!userDoc.exists) {
@@ -506,12 +508,15 @@ exports.sendQuizResultEmail = onCall(
         // Send the email
         await sgMail.send(msg);
         
-        console.log(`Updating Firestore record for document ID: ${userDoc.id} to mark email as sent`);
-        // Update Firestore to mark that email has been sent for this attempt
-        await admin.firestore().collection("quiz_responses").doc(userDoc.id).update({
-          emailSent: true,
-          emailSentAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        // Only update Firestore if userDoc exists
+        if (userDoc && userDoc.exists) {
+          console.log(`Updating Firestore record for document ID: ${userDoc.id} to mark email as sent`);
+          // Update Firestore to mark that email has been sent for this attempt
+          await admin.firestore().collection("quiz_responses").doc(userDoc.id).update({
+            emailSent: true,
+            emailSentAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+        }
         
         console.log('Email sent successfully to ' + email);
         return {
