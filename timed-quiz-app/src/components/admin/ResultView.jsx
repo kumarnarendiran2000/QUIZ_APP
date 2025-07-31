@@ -46,7 +46,7 @@ const ResultView = () => {
     }, 15000);
 
     try {
-      await sendEmail(
+      const result = await sendEmail(
         viewing,
         setEmailToast,
         setEmailSending,
@@ -55,6 +55,13 @@ const ResultView = () => {
 
       // Clear any previous timeout for the info toast
       clearTimeout(infoToastTimeout);
+      
+      // Auto dismiss success toast after 8 seconds
+      if (result && (result.success === true)) {
+        setTimeout(() => {
+          setEmailToast((prev) => ({ ...prev, show: false }));
+        }, 8000);
+      }
     } catch (error) {
       console.error("Error sending email:", error);
       // Clear any previous timeout for the info toast

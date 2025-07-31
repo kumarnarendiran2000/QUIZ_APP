@@ -15,8 +15,9 @@ admin.initializeApp();
 // Set SendGrid API key from environment variables.
 if (!process.env.SENDGRID_API_KEY) {
   console.error("FATAL ERROR: SENDGRID_API_KEY is not set.");
+  throw new Error("SENDGRID_API_KEY environment variable is required but not set.");
 }
-sgMail.setApiKey("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");
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 /**
  * Sends a quiz result email to a user.

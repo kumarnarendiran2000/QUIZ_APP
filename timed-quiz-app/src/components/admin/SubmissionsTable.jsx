@@ -102,7 +102,7 @@ const SubmissionsTable = () => {
     try {
       // Import sendEmail from adminUtils dynamically to avoid circular dependency
       const { sendEmail } = await import("./adminUtils");
-      await sendEmail(
+      const result = await sendEmail(
         user,
         setEmailToast,
         setEmailSending,
@@ -111,19 +111,19 @@ const SubmissionsTable = () => {
 
       // Clear any previous timeout for the info toast
       clearTimeout(infoToastTimeout);
-
-      setTimeout(() => {
-        setEmailToast({
-          show: true,
-          type: "success",
-          message: `Email sent successfully to ${user.name} (${user.email})`,
-        });
-
+      
+      // Always add auto-dismiss for success toasts if adminUtils.sendEmail was successful
+      if (result && result.success) {
         // Auto dismiss success toast after 8 seconds
         setTimeout(() => {
-          setEmailToast((prev) => ({ ...prev, show: false }));
+          setEmailToast((prev) => {
+            if (prev.type === "success") {
+              return { ...prev, show: false };
+            }
+            return prev;
+          });
         }, 8000);
-      }, 500);
+      }
     } catch (error) {
       console.error("Error sending email manually:", error);
       // Clear any previous timeout for the info toast
