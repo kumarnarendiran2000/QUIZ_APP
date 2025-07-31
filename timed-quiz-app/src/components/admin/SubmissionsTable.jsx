@@ -556,7 +556,7 @@ const SubmissionsTable = () => {
                   </span>
                 </td>
                 <td className="px-4 py-2 text-center w-32">
-                  {s.browser || s.browserInfo || "Unknown"}
+                  {s.browserInfo || "Unknown"}
                 </td>
                 <td className="px-4 py-2 text-center w-32">
                   {s.screenResolution ||

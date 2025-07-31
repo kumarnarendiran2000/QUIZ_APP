@@ -108,8 +108,8 @@ const Login = ({ onLogin }) => {
             }`}
           >
             {loading
-              ? "Signing you inn, please wait..."
-              : "🔐 Authnticate with Google"}
+              ? "Signing you in, please wait..."
+              : "🔐 Authenticate with Google"}
           </button>
         </div>
       </div>

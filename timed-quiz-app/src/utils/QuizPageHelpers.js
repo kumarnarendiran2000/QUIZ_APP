@@ -1,7 +1,7 @@
 // QuizPageHelpers.js
 import { getTestMode } from './quizSettings';
 import { saveQuizResponse } from './quizStorage';
-import { detectDeviceType, detectBrowser, getScreenResolution } from './deviceDetector';
+import { detectDeviceType, getBrowserInfo, getScreenResolution } from './deviceDetector';
 
 /**
  * Updates quiz answers in Firestore
@@ -103,7 +103,7 @@ export async function updateDeviceInfo(user) {
     currentTestMode,
     {
       deviceType: detectDeviceType(),
-      browser: detectBrowser(),
+      browserInfo: getBrowserInfo(),
       screenResolution: getScreenResolution(),
     }
   );

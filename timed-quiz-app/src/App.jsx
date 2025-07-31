@@ -6,6 +6,7 @@ import QuizPage from "./components/QuizPage";
 import ResultPage from "./components/ResultPage";
 import AdminDashboard from "./components/AdminDashboard";
 import Layout from "./components/Layout";
+import ErrorModal from "./components/ErrorModal";
 import { db } from "./utils/firebase";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { questions } from "./data/questions";
@@ -26,6 +27,50 @@ const App = () => {
   const [copyAttemptCount, setCopyAttemptCount] = useState(0);
   // New: testMode can be 'pre' or 'post'
   const [testMode, setTestMode] = useState("post");
+  
+  // Error modal state
+  const [errorModal, setErrorModal] = useState({
+    isOpen: false,
+    title: "",
+    message: ""
+  });
+  
+  // Centralized error handling function
+  const handleError = (title, message, returnToLogin = true) => {
+    console.log(`Error occurred: ${title} - Return to login: ${returnToLogin}`);
+    
+    setErrorModal({
+      isOpen: true,
+      title: title,
+      message: message
+    });
+    
+    // If returnToLogin is true, we'll set the step back to login when modal is closed
+    if (returnToLogin) {
+      console.log('Setting user to null to force return to login');
+      setUser(null);
+    }
+  };
+  
+  // Handle closing of error modal
+  const handleErrorClose = () => {
+    const wasErrorModal = errorModal.isOpen;
+    setErrorModal({ ...errorModal, isOpen: false });
+    
+    console.log(`Error modal closed. Current user: ${user ? 'Logged in' : 'Not logged in'}, Current step: ${step}`);
+    
+    // Check if the user state is null, which means we had an authentication error
+    if (!user) {
+      console.log('User is null, returning to login step');
+      // Always return to login step for authentication errors
+      setStep("login");
+    } else if (step === "login" && wasErrorModal) {
+      console.log('Already on login step, ensuring we stay there');
+      // If we're on the login step and there was an error modal showing,
+      // make sure we stay on the login step
+      setStep("login");
+    }
+  };
 
   // Load test mode from Firestore on mount and listen for changes
   useEffect(() => {
@@ -183,28 +228,73 @@ const App = () => {
 
     // If user cannot take quiz in current mode
     if (!canTake) {
+      // For most error cases, we want to start with no user logged in
+      // but for cases where we're showing results, we'll set the user later
+      setUser(null);
+      
       if (reason === "pre_test_required") {
-        // Show message that pre-test is required before post-test
-        alert("You need to complete a pre-test before taking a post-test.");
-      } else if (reason === "post_test_already_taken") {
-        // Load the existing post-test quiz and show results
-        const existingPostTest = await getQuizResponse(
-          loggedInUser.uid,
-          "post"
+        // Show a more detailed message about pre-test requirement
+        handleError(
+          "Pre-test Required",
+          "You need to complete a pre-test before taking a post-test. Please contact the test instructor for more details."
         );
-        if (existingPostTest) {
+        return; // Important: Exit function to prevent proceeding to next step
+      } else if (reason === "same_day_restriction") {
+        // Show message that tests must be taken on different days
+        handleError(
+          "Same Day Restriction",
+          "Pre-test and post-test must be taken on different days. Please return tomorrow or later to take your post-test. Contact the test instructor for more details."
+        );
+        return; // Important: Exit function to prevent proceeding to next step
+      } else if (reason === "out_of_order") {
+        // User trying to take pre-test after post-test
+        handleError(
+          "Test Order Restriction",
+          "You've already taken a post-test. You can't take a pre-test after completing a post-test. Please contact the test instructor for more details."
+        );
+        return; // Important: Exit function to prevent proceeding to next step
+      } else if (reason === "already_taken_today") {
+        // User is retaking the same test on the same day
+        if (existingQuiz) {
+          console.log(`User already took ${currentTestMode} test today, showing results`);
           setUser(loggedInUser);
           setUserInfo({
-            name: existingPostTest.name,
-            mobile: existingPostTest.mobile,
-            regno: existingPostTest.regno || "",
+            name: existingQuiz.name,
+            mobile: existingQuiz.mobile,
+            regno: existingQuiz.regno || "",
           });
-          setAnswers(existingPostTest.answers || []);
-          setDetailedResults(existingPostTest.detailedResults || []);
-          setQuizDuration(existingPostTest.quizDuration || "N/A");
-          setTestModeAtStart("post");
+          setAnswers(existingQuiz.answers || []);
+          setDetailedResults(existingQuiz.detailedResults || []);
+          setQuizDuration(existingQuiz.quizDuration || "N/A");
+          setTestModeAtStart(currentTestMode);
           setStep("result");
           return;
+        }
+      } else if (reason === "pre_test_already_taken" || reason === "post_test_already_taken") {
+        // User trying to take a test they've already completed
+        // Load the existing quiz and show results instead of showing an error
+        if (existingQuiz) {
+          console.log(`User already taken ${existingQuiz.testMode} test, showing results`);
+          setUser(loggedInUser);
+          setUserInfo({
+            name: existingQuiz.name,
+            mobile: existingQuiz.mobile,
+            regno: existingQuiz.regno || "",
+          });
+          setAnswers(existingQuiz.answers || []);
+          setDetailedResults(existingQuiz.detailedResults || []);
+          setQuizDuration(existingQuiz.quizDuration || "N/A");
+          setTestModeAtStart(existingQuiz.testMode || currentTestMode);
+          setStep("result");
+          return;
+        } else {
+          // This shouldn't happen normally, but as a fallback show an error message
+          const testType = reason === "pre_test_already_taken" ? "pre-test" : "post-test";
+          handleError(
+            `${testType.charAt(0).toUpperCase() + testType.slice(1)} Already Taken`,
+            `You've already taken a ${testType}. Each candidate can only take one ${testType}. Please contact the test instructor for more details.`
+          );
+          return; // Important: Exit function to prevent proceeding to next step
         }
       }
     }
@@ -311,7 +401,11 @@ const App = () => {
     const metadataSnap = await getDoc(metadataRef);
 
     if (!metadataSnap.exists()) {
-      alert("Scoring data missing!");
+      handleError(
+        "Scoring Error",
+        "Scoring data missing! Please contact the test administrator.",
+        false // Don't return to login
+      );
       return;
     }
 
@@ -465,6 +559,14 @@ const App = () => {
       {step === "admin" && (
         <AdminDashboard testMode={testMode} setTestMode={setTestMode} />
       )}
+      
+      {/* Error Modal */}
+      <ErrorModal 
+        isOpen={errorModal.isOpen}
+        title={errorModal.title}
+        message={errorModal.message}
+        onClose={handleErrorClose}
+      />
     </Layout>
   );
 };

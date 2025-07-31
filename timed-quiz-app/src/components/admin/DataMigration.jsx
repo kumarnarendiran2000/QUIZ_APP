@@ -7,6 +7,7 @@ import {
   doc,
   setDoc,
   updateDoc,
+  deleteDoc,
   serverTimestamp,
 } from "firebase/firestore";
 
@@ -23,10 +24,10 @@ const DataMigration = () => {
   const handleMigration = async () => {
     if (isMigrating) return;
 
-    // Confirm migration
+    // Confirm migration and deletion of originals
     if (
       !window.confirm(
-        "Are you sure you want to migrate all quiz responses to the new format? This operation cannot be undone."
+        "Are you sure you want to migrate all quiz responses to the new format and delete the original documents? This operation cannot be undone."
       )
     ) {
       return;
@@ -60,9 +61,9 @@ const DataMigration = () => {
           // Update progress
           setProgress({ current: i + 1, total: snapshot.size });
 
-          // Check if this is already in the new format (contains underscores)
-          if (docId.includes("_")) {
-            console.log(`Skipping document ${docId} - already in new format`);
+          // Skip documents already in the new format (contains underscores) or already marked as migrated
+          if (docId.includes("_") || data.migrated === true) {
+            console.log(`Skipping document ${docId} - already in new format or previously migrated`);
             skippedCount++;
             continue;
           }
@@ -70,8 +71,33 @@ const DataMigration = () => {
           // Determine test mode - default to "pre" for old documents
           const testMode = data.testMode || (data.isPostTest ? "post" : "pre");
 
-          // Use July 10, 2025 for migration as specified
-          const migrationDate = "20250710";
+          // Try to use the actual test start date from the document if available
+          let year, month, day, testDate;
+          
+          // Check if the document has a startedAt timestamp
+          if (data.startedAt) {
+            testDate = new Date(data.startedAt);
+            year = testDate.getFullYear();
+            month = String(testDate.getMonth() + 1).padStart(2, '0');
+            day = String(testDate.getDate()).padStart(2, '0');
+          } 
+          // If no startedAt, check for completedAt
+          else if (data.completedAt) {
+            testDate = new Date(data.completedAt);
+            year = testDate.getFullYear();
+            month = String(testDate.getMonth() + 1).padStart(2, '0');
+            day = String(testDate.getDate()).padStart(2, '0');
+          }
+          // Otherwise use a fallback date
+          else {
+            const now = new Date();
+            year = now.getFullYear();
+            month = String(now.getMonth() + 1).padStart(2, '0');
+            day = String(now.getDate()).padStart(2, '0');
+            testDate = now;
+          }
+          
+          const migrationDate = `${year}${month}${day}`;
 
           // Generate new document ID
           const newDocId = `${docId}_${testMode}_${migrationDate}`;
@@ -83,7 +109,7 @@ const DataMigration = () => {
             ...data,
             userUid: docId, // Ensure userUid field exists
             testMode: testMode, // Set the test mode explicitly
-            quizDate: "2025-07-10", // Set the date in YYYY-MM-DD format
+            quizDate: `${year}-${month}-${day}`, // Set the date in YYYY-MM-DD format using the actual test date
             migratedFrom: docId,
             migratedAt: serverTimestamp(),
           };
@@ -92,19 +118,17 @@ const DataMigration = () => {
           const newDocRef = doc(db, "quiz_responses", newDocId);
           await setDoc(newDocRef, enhancedData);
 
-          // Mark the old document as migrated
+          // Instead of marking the old document as migrated, delete it directly
           const oldDocRef = doc(db, "quiz_responses", docId);
-          await updateDoc(oldDocRef, {
-            migrated: true,
-            migratedTo: newDocId,
-            migratedAt: serverTimestamp(),
-          });
+          await deleteDoc(oldDocRef);
+          console.log(`Deleted original document ${docId} after migration`);
 
           migratedCount++;
           migrated.push({
             oldId: docId,
             newId: newDocId,
             testMode,
+            deleted: true,
           });
         } catch (err) {
           console.error(
@@ -138,6 +162,8 @@ const DataMigration = () => {
     }
   };
 
+  // The deletion functionality has been merged into the migration process
+
   return (
     <div className="bg-white rounded-lg shadow-md p-6 mb-8">
       <h3 className="text-xl font-bold mb-4 text-blue-800">Data Migration</h3>
@@ -151,34 +177,36 @@ const DataMigration = () => {
           Old format: <span className="text-blue-600">userUid</span>
           <br />
           New format:{" "}
-          <span className="text-green-600">userUid_testMode_20250710</span>
+          <span className="text-green-600">userUid_testMode_YYYYMMDD</span>
         </p>
         <p className="mt-2">
           All existing documents will be migrated using the following rules:
         </p>
         <ul className="list-disc ml-6 mt-2">
           <li>
-            Migration date (July 10, 2025) will be used for the date component
+            The actual test date will be extracted from the document (startedAt or completedAt timestamp)
           </li>
           <li>
             Documents will be assigned "pre" or "post" test mode based on
             existing data
           </li>
-          <li>Original documents will be kept and marked as migrated</li>
+          <li>Original documents will be automatically deleted after successful migration</li>
         </ul>
       </div>
 
-      <button
-        onClick={handleMigration}
-        disabled={isMigrating}
-        className={`px-4 py-2 rounded font-semibold ${
-          isMigrating
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-blue-600 hover:bg-blue-700 text-white"
-        }`}
-      >
-        {isMigrating ? "Migrating..." : "Migrate Documents"}
-      </button>
+      <div>
+        <button
+          onClick={handleMigration}
+          disabled={isMigrating}
+          className={`px-4 py-2 rounded font-semibold ${
+            isMigrating
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-blue-600 hover:bg-blue-700 text-white"
+          }`}
+        >
+          {isMigrating ? "Migrating & Cleaning..." : "Migrate Documents"}
+        </button>
+      </div>
 
       {isMigrating && (
         <div className="mt-4">
@@ -193,7 +221,7 @@ const DataMigration = () => {
             ></div>
           </div>
           <p className="text-sm text-gray-600">
-            Migrating {progress.current} of {progress.total} documents...
+            Migrating and cleaning {progress.current} of {progress.total} documents...
           </p>
         </div>
       )}
@@ -228,6 +256,8 @@ const DataMigration = () => {
               </p>
             </div>
           </div>
+          
+
 
           {result.migrated.length > 0 && (
             <div className="mt-4">
@@ -257,7 +287,7 @@ const DataMigration = () => {
 
           {result.errors.length > 0 && (
             <div className="mt-4">
-              <h4 className="font-bold mb-2 text-red-600">Errors</h4>
+              <h4 className="font-bold mb-2 text-red-600">Migration Errors</h4>
               <div className="max-h-40 overflow-auto border border-red-200 rounded p-2 bg-red-50">
                 <table className="w-full text-sm">
                   <thead className="bg-red-100">
@@ -278,6 +308,8 @@ const DataMigration = () => {
               </div>
             </div>
           )}
+          
+
         </div>
       )}
     </div>

@@ -112,7 +112,7 @@ export const AdminProvider = ({ children }) => {
           return {
             id: doc.id,
             // Add extracted fields if available
-            testDate: dateStr || "Unknown",
+            testDate: dateStr || docData.testDate || "Unknown",
             displayTestMode:
               testMode ||
               docData.testModeAtStart ||
@@ -123,7 +123,7 @@ export const AdminProvider = ({ children }) => {
             email: docData.email || "-",
             regno: docData.regno || "-",
             mobile: docData.mobile || "-",
-            score: docData.score !== undefined ? docData.score : "-",
+            score: docData.score !== undefined ? Number(docData.score) : "-",
             quizDuration: docData.quizDuration || "-",
             completedAt: docData.completedAt || "-",
             // Include the rest of the data

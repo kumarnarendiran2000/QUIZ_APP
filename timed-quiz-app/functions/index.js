@@ -16,7 +16,7 @@ admin.initializeApp();
 if (!process.env.SENDGRID_API_KEY) {
   console.error("FATAL ERROR: SENDGRID_API_KEY is not set.");
 }
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+sgMail.setApiKey("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");
 
 /**
  * Sends a quiz result email to a user.
@@ -29,6 +29,7 @@ exports.sendQuizResultEmail = onCall(
       maxInstances: 10,
       timeoutSeconds: 60,
       cors: /.*/, // Allow requests from any domain.
+      // For now, we're not using secrets management to avoid deployment issues
     },
     async (request) => {
       // Ensure the user is authenticated.

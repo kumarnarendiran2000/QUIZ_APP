@@ -41,8 +41,11 @@ const AdminVisualizations = ({ submissions, onClose }) => {
   // Score distribution (group by score)
   const scoreCounts = {};
   submissions.forEach((s) => {
-    const score = s.score ?? 0;
-    scoreCounts[score] = (scoreCounts[score] || 0) + 1;
+    // Only count submissions that have a valid score
+    if (s.score !== undefined && s.score !== null) {
+      const score = Number(s.score) || 0;
+      scoreCounts[score] = (scoreCounts[score] || 0) + 1;
+    }
   });
   const scoreData = Object.keys(scoreCounts)
     .sort((a, b) => Number(a) - Number(b))
@@ -52,12 +55,18 @@ const AdminVisualizations = ({ submissions, onClose }) => {
   const timeCounts = {};
   submissions.forEach((s) => {
     if (s.completedAt) {
-      const d = new Date(s.completedAt);
-      // Format: HH:mm (time only)
-      const time = `${String(d.getHours()).padStart(2, "0")}:${String(
-        d.getMinutes()
-      ).padStart(2, "0")}`;
-      timeCounts[time] = (timeCounts[time] || 0) + 1;
+      try {
+        const d = new Date(s.completedAt);
+        if (!isNaN(d.getTime())) { // Check for valid date
+          // Format: HH:mm (time only)
+          const time = `${String(d.getHours()).padStart(2, "0")}:${String(
+            d.getMinutes()
+          ).padStart(2, "0")}`;
+          timeCounts[time] = (timeCounts[time] || 0) + 1;
+        }
+      } catch (err) {
+        console.error("Invalid date format:", s.completedAt);
+      }
     }
   });
   const timeData = Object.keys(timeCounts)
@@ -73,18 +82,27 @@ const AdminVisualizations = ({ submissions, onClose }) => {
   const suspiciousData = submissions
     .map((s) => ({
       name: s.name || s.email || s.regno || "User",
-      tabSwitches: s.tabSwitchCount ?? 0,
-      copyAttempts: s.copyAttemptCount ?? 0,
+      tabSwitches: Number(s.tabSwitchCount) || 0,
+      copyAttempts: Number(s.copyAttemptCount) || 0,
     }))
-    .filter((d) => d.tabSwitches > 0 || d.copyAttempts > 0);
+    .filter((d) => d.tabSwitches > 0 || d.copyAttempts > 0)
+    // Sort by total suspicious activity (tab switches + copy attempts) in descending order
+    .sort((a, b) => (b.tabSwitches + b.copyAttempts) - (a.tabSwitches + a.copyAttempts))
+    // Limit to top 15 for better visualization
+    .slice(0, 15);
 
   // Summary stats
   const total = submissions.length;
-  const maxScore = total
-    ? Math.max(...submissions.map((s) => s.score ?? 0))
+  
+  // Filter out submissions with no scores
+  const validSubmissions = submissions.filter(s => s.score !== undefined && s.score !== null);
+  
+  const maxScore = validSubmissions.length
+    ? Math.max(...validSubmissions.map(s => Number(s.score) || 0))
     : 0;
-  const minScore = total
-    ? Math.min(...submissions.map((s) => s.score ?? 0))
+    
+  const minScore = validSubmissions.length
+    ? Math.min(...validSubmissions.map(s => Number(s.score) || 0))
     : 0;
 
   return (

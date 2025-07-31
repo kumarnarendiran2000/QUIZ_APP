@@ -96,32 +96,55 @@ export async function getAnyQuizWithTestMode(userUid, testMode) {
  * @returns {Object} { canTake: boolean, existingQuiz: Object|null, reason: string|null }
  */
 export async function canTakeQuiz(userUid, currentTestMode) {
-  // Check if user has taken this test mode today
+  // First check: has the user already completed both tests?
+  const preTest = await getAnyQuizWithTestMode(userUid, "pre");
+  const postTest = await getAnyQuizWithTestMode(userUid, "post");
+  
+  // If both tests are already taken, no more tests allowed
+  if (preTest && postTest) {
+    // Return the appropriate test result based on which test they're trying to take
+    return {
+      canTake: false,
+      existingQuiz: currentTestMode === "pre" ? preTest : postTest,
+      reason: currentTestMode === "pre" ? "pre_test_already_taken" : "post_test_already_taken"
+    };
+  }
+
+  // Check if user has taken this test mode today - if so, show them their results
   const todayQuiz = await getQuizResponse(userUid, currentTestMode);
   if (todayQuiz) {
     return {
       canTake: false,
       existingQuiz: todayQuiz,
-      reason: "already_taken_today"
+      reason: currentTestMode === "pre" ? "pre_test_already_taken" : "post_test_already_taken"
     };
   }
   
-  // If this is a pre-test, check if user has taken any pre-test before
+  // If this is a pre-test
   if (currentTestMode === "pre") {
-    const anyPreTest = await getAnyQuizWithTestMode(userUid, "pre");
-    if (anyPreTest) {
+    // Check if user has taken any pre-test before
+    if (preTest) {
       return {
         canTake: false,
-        existingQuiz: anyPreTest,
+        existingQuiz: preTest,
         reason: "pre_test_already_taken"
+      };
+    }
+    
+    // Check if user has taken a post-test already (out of order)
+    if (postTest) {
+      return {
+        canTake: false,
+        existingQuiz: postTest,
+        reason: "out_of_order"
       };
     }
   }
   
-  // If this is a post-test, check if user has taken a pre-test
+  // If this is a post-test
   if (currentTestMode === "post") {
-    const anyPreTest = await getAnyQuizWithTestMode(userUid, "pre");
-    if (!anyPreTest) {
+    // Check if user has taken a pre-test
+    if (!preTest) {
       return {
         canTake: false,
         existingQuiz: null,
@@ -130,12 +153,26 @@ export async function canTakeQuiz(userUid, currentTestMode) {
     }
     
     // Check if post-test already taken
-    const anyPostTest = await getAnyQuizWithTestMode(userUid, "post");
-    if (anyPostTest) {
+    if (postTest) {
       return {
         canTake: false,
-        existingQuiz: anyPostTest,
+        existingQuiz: postTest,
         reason: "post_test_already_taken"
+      };
+    }
+    
+    // Check if pre-test was taken on the same day as today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const preTestDate = new Date(preTest.startedAt);
+    preTestDate.setHours(0, 0, 0, 0);
+    
+    if (preTestDate.getTime() === today.getTime()) {
+      return {
+        canTake: false,
+        existingQuiz: null,
+        reason: "same_day_restriction"
       };
     }
   }
