@@ -498,6 +498,21 @@ const App = () => {
           "./utils/deviceDetector"
         );
         
+        // CRITICAL - First do a minimal update with completedAt to mark quiz as finished
+        // This prevents hanging/incomplete submissions like Meghana's case
+        try {
+          // First update only essential completion data
+          await saveQuizResponse(user.uid, currentTestMode, {
+            completedAt: Date.now(),
+            submissionType,
+            autoSubmitReason,
+          });
+          console.log("Quiz marked as completed successfully");
+        } catch (minUpdateError) {
+          console.error("Failed to mark quiz as completed:", minUpdateError);
+          // Continue anyway - we'll try the full update next
+        }
+        
         // Set up a promise with timeout to ensure we don't hang indefinitely on saveQuizResponse
         const saveWithTimeout = (timeoutMs) => {
           return Promise.race([
@@ -514,7 +529,7 @@ const App = () => {
               wrongCount: questions.length - correctCount,
               detailedResults,
               quizDuration,
-              completedAt: Date.now(),
+              completedAt: Date.now(), // Use fresh timestamp
               // Preserve submission type and reason
               submissionType,
               autoSubmitReason,
@@ -522,6 +537,9 @@ const App = () => {
               deviceType: detectDeviceType(),
               browserInfo: getBrowserInfo(),
               screenResolution: getScreenResolution(),
+              // Add safety flags to prevent partial completion
+              resultsCalculated: true,
+              submissionCompleted: true
             }),
             new Promise((_, reject) => 
               setTimeout(() => reject(new Error("Firestore save timed out")), timeoutMs)
@@ -536,6 +554,12 @@ const App = () => {
         console.error("Error saving quiz submission:", error);
         // Continue with local results even if Firestore save failed
         // The server-side function will eventually check for hanging quizzes
+        
+        // Show an alert to the user so they're aware of the issue
+        // This is non-blocking, so the user can still see their results
+        alert("Warning: There was an issue saving your quiz results to our servers. " +
+              "Your results are displayed now, but you may need to contact support if " +
+              "they don't appear in your history later.");
       }
 
       // Always update the UI with results, even if saving to Firestore failed

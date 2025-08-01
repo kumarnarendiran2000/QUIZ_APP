@@ -562,7 +562,7 @@ exports.sendQuizResultEmail = onCall(
  */
 exports.autoSubmitIncompleteQuizzes = onSchedule(
     {
-      schedule: "every 5 minutes",
+      schedule: "every 15 minutes", // Reduced frequency to save costs
       region: "us-central1",
       timeoutSeconds: 60,
       memory: "256MiB",
@@ -581,14 +581,46 @@ exports.autoSubmitIncompleteQuizzes = onSchedule(
       const cutoffTime = now - MAX_QUIZ_DURATION_MS;
       
       try {
-        // Query for quizzes that have started but not completed
-        const querySnapshot = await admin.firestore()
+        // Get all quiz responses that are incomplete (no completedAt)
+        // We'll filter by time after fetching to avoid complex indexes
+        console.log("Querying for incomplete quizzes...");
+        const incompleteQuery = await admin.firestore()
           .collection("quiz_responses")
-          .where("startedAt", "<", cutoffTime)
           .where("completedAt", "==", null)
           .get();
         
-        console.log(`Found ${querySnapshot.size} incomplete quizzes that have exceeded the time limit`);
+        console.log(`Found ${incompleteQuery.size} incomplete quizzes total`);
+        
+        // Filter locally for hanging quizzes (past cutoff time)
+        // This approach avoids the need for composite indexes
+        const allDocs = incompleteQuery.docs.filter(doc => {
+          const data = doc.data();
+          const startedAt = data.startedAt;
+          
+          // Conditions for auto-submission:
+          // 1. Started in the past and more than QUIZ_DURATION + buffer ago
+          // 2. Started in the future (invalid timestamp)
+          // 3. Missing or invalid startedAt but has other quiz data
+          
+          if (!startedAt) {
+            // No startedAt but has quiz data - consider stale
+            return true;
+          }
+          
+          if (startedAt > now) {
+            console.log(`Quiz ${doc.id} has future timestamp: ${new Date(startedAt).toISOString()}`);
+            return true; // Future timestamp (invalid)
+          }
+          
+          if (startedAt < cutoffTime) {
+            console.log(`Quiz ${doc.id} has exceeded time limit (started: ${new Date(startedAt).toISOString()})`);
+            return true; // Started too long ago
+          }
+          
+          return false; // Still active quiz
+        });
+        
+        console.log(`After filtering, found ${allDocs.length} quizzes needing auto-submission`);
         
         const batch = admin.firestore().batch();
         let autoSubmitCount = 0;
@@ -602,8 +634,32 @@ exports.autoSubmitIncompleteQuizzes = onSchedule(
         
         const correctAnswers = metadataDoc.data().correctAnswers || [];
         
-        for (const doc of querySnapshot.docs) {
+        for (const doc of allDocs) {
           const quizData = doc.data();
+          
+          // Special handling for submissions that already have emails sent but incomplete data
+          // This handles the "hanging" submissions like Meghana's quiz
+          if (quizData.emailSent === true && !quizData.completedAt) {
+            console.log(`Quiz ${doc.id} has emailSent=true but no completedAt - fixing incomplete submission`);
+          }
+          
+          // Handle invalid timestamps
+          let actualStartedAt = quizData.startedAt;
+          let isInvalidTimestamp = false;
+          let autoSubmitReasonValue = "serverTimeout";
+          
+          // Check if startedAt is in the future or invalid
+          if (!actualStartedAt) {
+            console.log(`Missing startedAt for quiz ${doc.id}. Using current time minus quiz duration.`);
+            actualStartedAt = now - (QUIZ_DURATION * 1000);
+            isInvalidTimestamp = true;
+            autoSubmitReasonValue = "missingTimestamp";
+          } else if (actualStartedAt > now || actualStartedAt < (now - (30 * 24 * 60 * 60 * 1000))) { // More than 30 days ago or in future
+            console.log(`Invalid timestamp detected for quiz ${doc.id}: ${actualStartedAt}. Using current time minus quiz duration.`);
+            actualStartedAt = now - (QUIZ_DURATION * 1000); // Assume it started exactly when it should have ended
+            isInvalidTimestamp = true;
+            autoSubmitReasonValue = "invalidTimestamp";
+          }
           
           // Calculate correct answers and score
           const answers = quizData.answers || [];
@@ -628,10 +684,9 @@ exports.autoSubmitIncompleteQuizzes = onSchedule(
             }
           });
           
-          // Calculate time taken
-          const startedAt = quizData.startedAt;
+          // Calculate time taken using corrected timestamp
           const timeTakenSec = Math.min(
-            Math.max(0, Math.floor((now - startedAt) / 1000)),
+            Math.max(0, Math.floor((now - actualStartedAt) / 1000)),
             QUIZ_DURATION
           );
           const mins = Math.floor(timeTakenSec / 60);
@@ -647,10 +702,30 @@ exports.autoSubmitIncompleteQuizzes = onSchedule(
             correctCount: correctCount,
             wrongCount: answeredCount - correctCount,
             score: correctCount,
-            submissionType: "auto",
-            autoSubmitReason: "serverTimeout",
+            submissionType: quizData.emailSent === true ? quizData.submissionType || "manual" : "auto",
+            autoSubmitReason: quizData.emailSent === true ? (quizData.autoSubmitReason || "emailSentIncomplete") : autoSubmitReasonValue,
             lastUpdated: now,
           };
+          
+          // If we corrected an invalid timestamp, also update startedAt
+          if (isInvalidTimestamp) {
+            updateData.startedAt = actualStartedAt;
+            updateData.originalInvalidStartedAt = quizData.startedAt; // Keep record of the invalid timestamp
+          }
+          
+          // If answers are missing but emailSent is true, add an empty answers array to avoid null errors
+          if (quizData.emailSent === true && (!quizData.answers || !Array.isArray(quizData.answers))) {
+            console.log(`Quiz ${doc.id} has emailSent=true but no answers array - fixing incomplete submission`);
+            updateData.answers = Array(answers.length).fill(null);
+            updateData.answeredCount = 0;
+            updateData.unansweredCount = answers.length;
+            updateData.score = 0;
+            updateData.correctCount = 0;
+            updateData.wrongCount = 0;
+            updateData.detailedResults = [];
+            updateData.submissionCompleted = true;
+            updateData.resultsCalculated = true;
+          }
           
           // Add to batch
           batch.update(doc.ref, updateData);

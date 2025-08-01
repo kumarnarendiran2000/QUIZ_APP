@@ -89,6 +89,16 @@ const ResultPage = ({
     // Send email for both pre and post test after results are loaded
     const sendEmail = async () => {
       try {
+        // First check if the submission has the required data before sending email
+        // This prevents the "Meghana scenario" where email is sent but data is incomplete
+        if (!detailedResults || detailedResults.length === 0 || !quizDuration || quizDuration === "N/A") {
+          console.warn("Missing critical quiz data - skipping automatic email sending");
+          setShowToast(true);
+          setToastType("error");
+          setToastMsg("Cannot send email - quiz data incomplete. Please contact support.");
+          return;
+        }
+        
         setShowToast(true);
         setToastType("info");
         setToastMsg("Please wait, sending your test results to your email...");

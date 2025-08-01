@@ -179,9 +179,27 @@ export async function saveQuizResponse(userUid, testMode, data, merge = true) {
     userUid,
     testMode,
     // Adjust to IST timezone (UTC+5:30 = +330 minutes)
-    quizDate: new Date(new Date().getTime() + (330 * 60000)).toISOString().split('T')[0] // YYYY-MM-DD format in IST
+    quizDate: new Date(new Date().getTime() + (330 * 60000)).toISOString().split('T')[0], // YYYY-MM-DD format in IST
+    lastUpdated: Date.now() // Add timestamp to track last update time
   };
   
-  await setDoc(ref, enhancedData, { merge });
-  return docId;
+  // Add retry mechanism for more reliable saving
+  let attempts = 0;
+  const maxAttempts = 3;
+  
+  while (attempts < maxAttempts) {
+    try {
+      await setDoc(ref, enhancedData, { merge });
+      console.log(`Quiz data saved successfully for ${userUid} on attempt ${attempts + 1}`);
+      return docId;
+    } catch (error) {
+      attempts++;
+      if (attempts >= maxAttempts) {
+        console.error(`Failed to save quiz data after ${maxAttempts} attempts:`, error);
+        throw error;
+      }
+      console.warn(`Save attempt ${attempts} failed, retrying in 1s...`, error);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+    }
+  }
 }
