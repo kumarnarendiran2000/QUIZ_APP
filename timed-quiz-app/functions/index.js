@@ -5,6 +5,7 @@
  */
 
 const {onCall} = require("firebase-functions/v2/https");
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const sgMail = require("@sendgrid/mail");
@@ -552,4 +553,121 @@ exports.sendQuizResultEmail = onCall(
         );
       }
     },
+);
+
+/**
+ * Auto-submit any hanging or incomplete quizzes.
+ * This function runs every 5 minutes to check for quizzes that have been started
+ * but not completed within the time limit (20 minutes + 5 minute buffer).
+ */
+exports.autoSubmitIncompleteQuizzes = onSchedule(
+    {
+      schedule: "every 5 minutes",
+      region: "us-central1",
+      timeoutSeconds: 60,
+      memory: "256MiB",
+      retryCount: 3,
+      maxInstances: 1,
+    },
+    async (event) => {
+      console.log("Starting scheduled auto-submission check for incomplete quizzes");
+      
+      // Get all quiz responses that have startedAt but no completedAt
+      const QUIZ_DURATION = 1200; // 20 minutes in seconds
+      const BUFFER_TIME = 300; // 5 minute buffer in seconds
+      const MAX_QUIZ_DURATION_MS = (QUIZ_DURATION + BUFFER_TIME) * 1000;
+      
+      const now = Date.now();
+      const cutoffTime = now - MAX_QUIZ_DURATION_MS;
+      
+      try {
+        // Query for quizzes that have started but not completed
+        const querySnapshot = await admin.firestore()
+          .collection("quiz_responses")
+          .where("startedAt", "<", cutoffTime)
+          .where("completedAt", "==", null)
+          .get();
+        
+        console.log(`Found ${querySnapshot.size} incomplete quizzes that have exceeded the time limit`);
+        
+        const batch = admin.firestore().batch();
+        let autoSubmitCount = 0;
+        
+        // Get the correct answers from metadata first
+        const metadataDoc = await admin.firestore().collection("quiz_metadata").doc("default").get();
+        if (!metadataDoc.exists) {
+          console.error("Quiz metadata not found!");
+          return { error: "Quiz metadata not found" };
+        }
+        
+        const correctAnswers = metadataDoc.data().correctAnswers || [];
+        
+        for (const doc of querySnapshot.docs) {
+          const quizData = doc.data();
+          
+          // Calculate correct answers and score
+          const answers = quizData.answers || [];
+          
+          // Skip quizzes without answers array (might be corrupted data)
+          if (!Array.isArray(answers)) {
+            console.log(`Skipping quiz ${doc.id} due to invalid answers format`);
+            continue;
+          }
+          
+          // Process answers and calculate score
+          let correctCount = 0;
+          let answeredCount = 0;
+          
+          answers.forEach((selected, i) => {
+            if (selected !== null && typeof selected === "number") {
+              answeredCount++;
+              
+              if (i < correctAnswers.length && selected === correctAnswers[i]) {
+                correctCount++;
+              }
+            }
+          });
+          
+          // Calculate time taken
+          const startedAt = quizData.startedAt;
+          const timeTakenSec = Math.min(
+            Math.max(0, Math.floor((now - startedAt) / 1000)),
+            QUIZ_DURATION
+          );
+          const mins = Math.floor(timeTakenSec / 60);
+          const secs = timeTakenSec % 60;
+          const quizDuration = `${mins}m ${secs}s`;
+          
+          // Prepare update data
+          const updateData = {
+            completedAt: now,
+            quizDuration: quizDuration,
+            answeredCount: answeredCount,
+            unansweredCount: answers.length - answeredCount,
+            correctCount: correctCount,
+            wrongCount: answeredCount - correctCount,
+            score: correctCount,
+            submissionType: "auto",
+            autoSubmitReason: "serverTimeout",
+            lastUpdated: now,
+          };
+          
+          // Add to batch
+          batch.update(doc.ref, updateData);
+          autoSubmitCount++;
+        }
+        
+        if (autoSubmitCount > 0) {
+          await batch.commit();
+          console.log(`Successfully auto-submitted ${autoSubmitCount} hanging quizzes`);
+        } else {
+          console.log("No hanging quizzes needed auto-submission");
+        }
+        
+        return { autoSubmitted: autoSubmitCount };
+      } catch (error) {
+        console.error("Error in auto-submit function:", error);
+        return { error: error.message };
+      }
+    }
 );

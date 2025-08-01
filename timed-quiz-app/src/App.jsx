@@ -333,47 +333,53 @@ const App = () => {
     setTestModeAtStart(mode);
 
     if (user) {
-      // Import the saveQuizResponse function
-      const { saveQuizResponse, getQuizResponse } = await import(
-        "./utils/quizStorage"
-      );
-
-      // Check if the user has already started a quiz today
-      const existingQuiz = await getQuizResponse(user.uid, mode);
-      const currentStartedAt = existingQuiz?.startedAt;
-
-      // Prepare device data
-      const deviceData = {
-        deviceType:
-          deviceType !== "Unknown"
-            ? deviceType
-            : existingQuiz?.deviceType || "Unknown",
-        browserInfo:
-          browserInfo !== "Unknown"
-            ? browserInfo
-            : existingQuiz?.browserInfo || "Unknown",
-        screenResolution:
-          screenResolution !== "Unknown"
-            ? screenResolution
-            : existingQuiz?.screenResolution || "Unknown",
-      };
-
-      // Save the quiz with our new format
-      await saveQuizResponse(user.uid, mode, {
-        name: userInfo.name,
-        email: user.email,
-        mobile: userInfo.mobile,
-        regno: userInfo.regno,
-        // Only set startedAt if it doesn't exist yet - never overwrite it
-        ...(currentStartedAt ? {} : { startedAt: Date.now() }),
-        answers: initialAnswers,
-        testModeAtStart: mode,
-        // Add device information
-        ...deviceData,
-        // Initialize submission type
-        submissionType: "manual", // Will be updated to "auto" if auto-submitted
-        autoSubmitReason: null, // Will be filled if auto-submitted
-      });
+      try {
+        // Import the saveQuizResponse function
+        const { saveQuizResponse, getQuizResponse } = await import(
+          "./utils/quizStorage"
+        );
+  
+        // Check if the user has already started a quiz today
+        const existingQuiz = await getQuizResponse(user.uid, mode);
+        const currentStartedAt = existingQuiz?.startedAt;
+  
+        // Prepare device data
+        const deviceData = {
+          deviceType:
+            deviceType !== "Unknown"
+              ? deviceType
+              : existingQuiz?.deviceType || "Unknown",
+          browserInfo:
+            browserInfo !== "Unknown"
+              ? browserInfo
+              : existingQuiz?.browserInfo || "Unknown",
+          screenResolution:
+            screenResolution !== "Unknown"
+              ? screenResolution
+              : existingQuiz?.screenResolution || "Unknown",
+        };
+  
+        // Save the quiz with our new format
+        await saveQuizResponse(user.uid, mode, {
+          name: userInfo.name,
+          email: user.email,
+          mobile: userInfo.mobile,
+          regno: userInfo.regno,
+          // Only set startedAt if it doesn't exist yet - never overwrite it
+          ...(currentStartedAt ? {} : { startedAt: Date.now() }),
+          answers: initialAnswers,
+          testModeAtStart: mode,
+          // Add device information
+          ...deviceData,
+          // Initialize submission type
+          submissionType: "manual", // Will be updated to "auto" if auto-submitted
+          autoSubmitReason: null, // Will be filled if auto-submitted
+        });
+      } catch (error) {
+        console.error("Error saving initial quiz data:", error);
+        // Continue with the quiz even if there was an error saving to Firestore
+        // The server-side backup will eventually sync any hanging quizzes
+      }
     }
 
     setTimeLeft(QUIZ_DURATION);
@@ -486,35 +492,53 @@ const App = () => {
     const quizDuration = `${mins}m ${secs}s`;
 
     if (user) {
-      // Add device information for the submission
-      const { detectDeviceType, getBrowserInfo, getScreenResolution } = await import(
-        "./utils/deviceDetector"
-      );
-      
-      // Save using our new format
-      await saveQuizResponse(user.uid, currentTestMode, {
-        name: userInfo.name,
-        email: user.email,
-        mobile: userInfo.mobile,
-        regno: userInfo.regno,
-        answers: finalAnswers,
-        answeredCount,
-        unansweredCount,
-        score: correctCount,
-        correctCount,
-        wrongCount: questions.length - correctCount,
-        detailedResults,
-        quizDuration,
-        completedAt: Date.now(),
-        // Preserve submission type and reason
-        submissionType,
-        autoSubmitReason,
-        // Add device information
-        deviceType: detectDeviceType(),
-        browserInfo: getBrowserInfo(),
-        screenResolution: getScreenResolution(),
-      });
+      try {
+        // Add device information for the submission
+        const { detectDeviceType, getBrowserInfo, getScreenResolution } = await import(
+          "./utils/deviceDetector"
+        );
+        
+        // Set up a promise with timeout to ensure we don't hang indefinitely on saveQuizResponse
+        const saveWithTimeout = (timeoutMs) => {
+          return Promise.race([
+            saveQuizResponse(user.uid, currentTestMode, {
+              name: userInfo.name,
+              email: user.email,
+              mobile: userInfo.mobile,
+              regno: userInfo.regno,
+              answers: finalAnswers,
+              answeredCount,
+              unansweredCount,
+              score: correctCount,
+              correctCount,
+              wrongCount: questions.length - correctCount,
+              detailedResults,
+              quizDuration,
+              completedAt: Date.now(),
+              // Preserve submission type and reason
+              submissionType,
+              autoSubmitReason,
+              // Add device information
+              deviceType: detectDeviceType(),
+              browserInfo: getBrowserInfo(),
+              screenResolution: getScreenResolution(),
+            }),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error("Firestore save timed out")), timeoutMs)
+            )
+          ]);
+        };
+        
+        // Try to save with a 8-second timeout
+        await saveWithTimeout(8000);
+        console.log("Quiz submission saved successfully to Firestore");
+      } catch (error) {
+        console.error("Error saving quiz submission:", error);
+        // Continue with local results even if Firestore save failed
+        // The server-side function will eventually check for hanging quizzes
+      }
 
+      // Always update the UI with results, even if saving to Firestore failed
       setDetailedResults(detailedResults);
       setQuizDuration(quizDuration);
     }
