@@ -232,21 +232,10 @@ const App = () => {
       // but for cases where we're showing results, we'll set the user later
       setUser(null);
       
-      if (reason === "pre_test_required") {
-        // Show a more detailed message about pre-test requirement
-        handleError(
-          "Pre-test Required",
-          "You need to complete a pre-test before taking a post-test. Please contact the test instructor for more details."
-        );
-        return; // Important: Exit function to prevent proceeding to next step
-      } else if (reason === "same_day_restriction") {
-        // Show message that tests must be taken on different days
-        handleError(
-          "Same Day Restriction",
-          "Pre-test and post-test must be taken on different days. Please return tomorrow or later to take your post-test. Contact the test instructor for more details."
-        );
-        return; // Important: Exit function to prevent proceeding to next step
-      } else if (reason === "out_of_order") {
+      // BYPASSED: Pre-test requirement check removed
+      // BYPASSED: Same day restriction check removed
+      
+      if (reason === "out_of_order") {
         // User trying to take pre-test after post-test
         handleError(
           "Test Order Restriction",

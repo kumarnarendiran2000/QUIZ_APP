@@ -143,14 +143,8 @@ export async function canTakeQuiz(userUid, currentTestMode) {
   
   // If this is a post-test
   if (currentTestMode === "post") {
-    // Check if user has taken a pre-test
-    if (!preTest) {
-      return {
-        canTake: false,
-        existingQuiz: null,
-        reason: "pre_test_required"
-      };
-    }
+    // BYPASS: No longer checking if user has taken a pre-test
+    // BYPASS: No longer checking for same-day restriction
     
     // Check if post-test already taken
     if (postTest) {
@@ -161,20 +155,7 @@ export async function canTakeQuiz(userUid, currentTestMode) {
       };
     }
     
-    // Check if pre-test was taken on the same day as today
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const preTestDate = new Date(preTest.startedAt);
-    preTestDate.setHours(0, 0, 0, 0);
-    
-    if (preTestDate.getTime() === today.getTime()) {
-      return {
-        canTake: false,
-        existingQuiz: null,
-        reason: "same_day_restriction"
-      };
-    }
+    // No other restrictions for post-test
   }
   
   // User can take the quiz
