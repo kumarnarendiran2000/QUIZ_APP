@@ -16,10 +16,20 @@ const Login = ({ onLogin }) => {
     try {
       setLoading(true);
       const provider = new GoogleAuthProvider();
+      
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
+      provider.addScope('email');
+      provider.addScope('profile');
+      
+      // Use popup authentication (original working method)
       const result = await signInWithPopup(auth, provider);
       onLogin(result.user);
     } catch (err) {
       console.error("Login failed:", err);
+      alert('Login failed. Please try again.');
       setLoading(false);
     }
   };
@@ -103,14 +113,18 @@ const Login = ({ onLogin }) => {
           <button
             onClick={handleLogin}
             disabled={loading}
-            className={`bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold py-3 px-6 rounded shadow-md transition duration-200 ${
+            className={`w-full bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold py-4 px-6 rounded-lg shadow-md transition duration-200 ${
               loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
             }`}
           >
             {loading
-              ? "Signing you inn, please wait..."
-              : "🔐 Authnticate with Google"}
+              ? "🔄 Signing in..."
+              : "🔐 Sign in with Google"}
           </button>
+          
+          <div className="text-sm text-gray-600 mt-3">
+            📱 Click the button above to sign in with your Google account
+          </div>
         </div>
       </div>
     </div>

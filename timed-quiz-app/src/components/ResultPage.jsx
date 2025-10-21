@@ -1,6 +1,5 @@
 // src/components/ResultPage.jsx
 import React, { useEffect, useState } from "react";
-import { questions } from "../data/questions";
 import { doc, getDoc } from "firebase/firestore";
 import { db, sendQuizResultEmail, auth } from "../utils/firebase";
 
@@ -15,7 +14,7 @@ const ResultPage = ({
   const correct = detailedResults.filter((r) => r.isCorrect).length;
   const wrong = detailedResults.length - correct;
   const answeredCount = answers.filter((a) => typeof a === "number").length;
-  const unansweredCount = questions.length - answeredCount;
+  const unansweredCount = detailedResults.length - answeredCount;
 
   const [correctAnswers, setCorrectAnswers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,15 +28,15 @@ const ResultPage = ({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch correct answers
-        const metadataRef = doc(db, "quiz_metadata", "default");
-        const metadataSnap = await getDoc(metadataRef);
-
-        if (metadataSnap.exists()) {
-          setCorrectAnswers(metadataSnap.data().correctAnswers);
+        // Fetch correct answers from the new question management system
+        const { loadQuestionsWithCorrectAnswers } = await import('../utils/questionsLoader');
+        const questionsData = await loadQuestionsWithCorrectAnswers();
+        
+        if (questionsData && questionsData.questions && questionsData.correctAnswers) {
+          setCorrectAnswers(questionsData.correctAnswers);
         } else {
           setFetchError(
-            "Test metadata not found. Please contact the administrator."
+            "Test questions not found. Please contact the administrator."
           );
           return;
         }
@@ -94,12 +93,12 @@ const ResultPage = ({
           answers,
           detailedResults: normalizedResults,
           correctAnswers,
-          allQuestions: questions,
+          allQuestions: detailedResults.map(r => ({ question: r.question, options: r.options })),
           quizDurationFromFrontend: quizDuration,
           testModeFromFrontend: testMode,
           correct,
           wrong,
-          total: questions.length,
+          total: detailedResults.length,
           score: correct,
         });
         console.log("Test result email sent successfully.");
@@ -232,7 +231,7 @@ const ResultPage = ({
           <p className="text-lg font-medium">
             <strong className="text-indigo-700">Score:</strong>{" "}
             <span className="text-xl font-bold">
-              {correct} / {questions.length}
+              {correct} / {detailedResults.length}
             </span>
           </p>
           <p>

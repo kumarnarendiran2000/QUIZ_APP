@@ -147,20 +147,29 @@ exports.sendQuizResultEmail = onCall(
 
       // Calculate answered and unanswered counts
       // Ensure details is a full array of question objects in order, with question text, correct answer, user answer, etc.
-      // If details is missing question text, fetch from questions.js
+      // Try to use questions from frontend data
       let questionsList = [];
-      try {
-        // First try to use questions from frontend
-        if (Array.isArray(frontendQuestions) && frontendQuestions.length > 0) {
-          questionsList = frontendQuestions;
-          console.log("Using questions from frontend data");
-        } else {
-          // Fallback to loading from questions.js
-          questionsList = require("../src/data/questions.js").questions;
-          console.log("Using questions from local questions.js file");
+      if (Array.isArray(frontendQuestions) && frontendQuestions.length > 0) {
+        questionsList = frontendQuestions;
+        console.log("Using questions from frontend data");
+      } else {
+        // Try to fetch from Firestore quiz_questions collection as fallback
+        try {
+          const questionsSnapshot = await admin.firestore().collection("quiz_questions").orderBy('order').get();
+          if (!questionsSnapshot.empty) {
+            questionsList = questionsSnapshot.docs.map(doc => {
+              const data = doc.data();
+              return {
+                question: data.question,
+                options: data.options,
+                topic: data.topic
+              };
+            });
+            console.log(`Using ${questionsList.length} questions from quiz_questions collection`);
+          }
+        } catch (e) {
+          console.error("Could not load questions from Firestore:", e);
         }
-      } catch (e) {
-        console.error("Could not load questions for email details:", e);
       }
 
       // Build a normalized details array in order, with question text, correct answer, user answer, isCorrect, wasAnswered
@@ -191,15 +200,15 @@ exports.sendQuizResultEmail = onCall(
         correctAnswers = frontendCorrectAnswers;
         console.log(`Using ${frontendCorrectAnswers.length} correct answers from frontend data`);
       } else {
-        // Try to get correctAnswers from metadata as fallback
+        // Try to get correctAnswers from the new quiz_questions collection as fallback
         try {
-          const metaDoc = await admin.firestore().collection("quiz_metadata").doc("default").get();
-          if (metaDoc.exists) {
-            correctAnswers = metaDoc.data().correctAnswers || [];
-            console.log(`Using ${correctAnswers.length} correct answers from Firestore`);
+          const questionsSnapshot = await admin.firestore().collection("quiz_questions").orderBy('order').get();
+          if (!questionsSnapshot.empty) {
+            correctAnswers = questionsSnapshot.docs.map(doc => doc.data().correctAnswer);
+            console.log(`Using ${correctAnswers.length} correct answers from quiz_questions collection`);
           }
         } catch (e) {
-          console.error("Failed to fetch correct answers from Firestore:", e);
+          console.error("Failed to fetch correct answers from quiz_questions:", e);
         }
       }
       

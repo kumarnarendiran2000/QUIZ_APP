@@ -207,14 +207,12 @@ export const AdminProvider = ({ children }) => {
     setIsSorted(!isSorted);
   };
 
-  // Fetch correct answers when viewing a result
+  // Fetch correct answers from the new quiz_questions collection
   const fetchCorrectAnswers = async () => {
     try {
-      const metadataRef = doc(db, "quiz_metadata", "default");
-      const metadataSnap = await getDoc(metadataRef);
-      if (metadataSnap.exists()) {
-        setCorrectAnswers(metadataSnap.data().correctAnswers || []);
-      }
+      const { loadCorrectAnswers } = await import("../../utils/questionsLoader");
+      const correctAnswers = await loadCorrectAnswers();
+      setCorrectAnswers(correctAnswers);
     } catch (err) {
       console.error("Failed to fetch correct answers:", err);
     }

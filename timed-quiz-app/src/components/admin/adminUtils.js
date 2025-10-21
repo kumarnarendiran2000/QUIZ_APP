@@ -1,7 +1,7 @@
 // src/components/admin/adminUtils.js
 import { doc, deleteDoc, getDoc } from "firebase/firestore";
 import { db, sendQuizResultEmail } from "../../utils/firebase";
-import { questions } from "../../data/questions";
+import { loadQuestions } from "../../utils/questionsLoader";
 
 // Delete a submission from Firestore
 export const deleteSubmission = async (id, selectedIds, setSelectedIds, setSelectAll) => {
@@ -53,15 +53,8 @@ export const sendEmail = async (user, setEmailToast, setEmailSending, setEmailUs
       message: `Sending email to ${user.name} (${user.email})...`,
     });
 
-    // Get correct answers from metadata
-    const metadataRef = doc(db, "quiz_metadata", "default");
-    const metadataSnap = await getDoc(metadataRef);
-
-    if (!metadataSnap.exists()) {
-      throw new Error("Quiz metadata not found");
-    }
-
-    const correctAnswers = metadataSnap.data().correctAnswers || [];
+    // Load questions and correct answers dynamically
+    const { questions: currentQuestions, correctAnswers } = await loadQuestions();
 
     // Extract the data we need to send from user record
     const answers = user.answers || [];
@@ -69,7 +62,7 @@ export const sendEmail = async (user, setEmailToast, setEmailSending, setEmailUs
     const quizDuration = user.quizDuration || "N/A";
 
     // Normalize results data similar to ResultPage.jsx
-    const normalizedResults = questions.map((q, i) => {
+    const normalizedResults = currentQuestions.map((q, i) => {
       const selected = answers[i];
       const correct = correctAnswers[i];
       const isCorrect = selected === correct;
@@ -87,7 +80,7 @@ export const sendEmail = async (user, setEmailToast, setEmailSending, setEmailUs
     // Calculate counts for sending
     const correct = normalizedResults.filter((r) => r.isCorrect).length;
     const wrong = normalizedResults.length - correct;
-    const total = questions.length;
+    const total = currentQuestions.length;
 
     // Send the email
     await sendQuizResultEmail({
@@ -97,7 +90,7 @@ export const sendEmail = async (user, setEmailToast, setEmailSending, setEmailUs
       answers,
       detailedResults: normalizedResults,
       correctAnswers,
-      allQuestions: questions,
+      allQuestions: currentQuestions,
       quizDurationFromFrontend: quizDuration,
       testModeFromFrontend: testMode,
       correct,

@@ -1,6 +1,5 @@
 // src/components/QuizPage.jsx
 import React, { useEffect, useState, useRef } from "react";
-import { questions } from "../data/questions";
 import {
   handleAutoSubmit,
   updateSubmissionStatus,
@@ -15,6 +14,7 @@ const QuizPage = ({
   user,
   initialTabSwitchCount = 0,
   initialCopyAttemptCount = 0,
+  questions,
 }) => {
   const [tabSwitchCount, setTabSwitchCount] = useState(initialTabSwitchCount);
   const [showProctorWarning, setShowProctorWarning] = useState(false);

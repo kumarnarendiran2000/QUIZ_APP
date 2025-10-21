@@ -1,7 +1,7 @@
 // src/components/admin/ResultView.jsx
-import React from "react";
+import React, { useState, useEffect } from "react";
 import useAdmin from "./hooks/useAdmin";
-import { questions } from "../../data/questions";
+import { loadQuestions } from "../../utils/questionsLoader";
 import { sendEmail } from "./adminUtils";
 
 const ResultView = () => {
@@ -17,8 +17,42 @@ const ResultView = () => {
     setEmailToast,
   } = useAdmin();
 
+  const [currentQuestions, setCurrentQuestions] = useState([]);
+  const [dynamicCorrectAnswers, setDynamicCorrectAnswers] = useState([]);
+  const [questionsLoading, setQuestionsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadDynamicQuestions = async () => {
+      try {
+        const { questions: loadedQuestions, correctAnswers: loadedAnswers } = await loadQuestions();
+        setCurrentQuestions(loadedQuestions);
+        setDynamicCorrectAnswers(loadedAnswers);
+      } catch (error) {
+        console.error("Error loading questions in ResultView:", error);
+        alert("Failed to load questions. Please refresh the page.");
+      } finally {
+        setQuestionsLoading(false);
+      }
+    };
+
+    loadDynamicQuestions();
+  }, []);
+
   if (!viewing) {
     return null;
+  }
+
+  if (questionsLoading) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6">
+          <div className="text-center">
+            <div className="text-xl text-gray-600 mb-4">Loading questions...</div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const handleSendEmail = async () => {
@@ -281,7 +315,7 @@ const ResultView = () => {
       {viewing.answers ? (
         // Case 1: Use answers array if available
         viewing.answers.map((selected, index) => {
-          const q = questions[index];
+          const q = currentQuestions[index];
           if (!q) return null; // Skip if question doesn't exist
 
           const correct = correctAnswers[index]; // Use from component state instead of viewing object
@@ -330,7 +364,7 @@ const ResultView = () => {
       ) : viewing.detailedResults ? (
         // Case 2: Fall back to detailedResults if answers array is not available (legacy format)
         viewing.detailedResults.map((r, index) => {
-          const q = questions[r.q - 1] || {
+          const q = currentQuestions[r.q - 1] || {
             question: r.question || `Question ${r.q}`,
             options: [],
           };

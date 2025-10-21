@@ -1,7 +1,7 @@
 // src/components/UserForm.jsx
 import React, { useState } from "react";
 
-const UserForm = ({ userInfo, setUserInfo, onStartQuiz }) => {
+const UserForm = ({ userInfo, setUserInfo, onStartQuiz, isLoading = false }) => {
   const [errors, setErrors] = useState({ name: "", mobile: "", regno: "" });
   const [submitting, setSubmitting] = useState(false);
 
@@ -127,14 +127,16 @@ const UserForm = ({ userInfo, setUserInfo, onStartQuiz }) => {
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || isLoading}
           className={`w-full text-white text-lg font-semibold py-3 rounded shadow-md transition duration-200 ${
-            submitting
+            submitting || isLoading
               ? "bg-blue-400 cursor-not-allowed opacity-60"
               : "bg-blue-600 hover:bg-blue-700 cursor-pointer"
           }`}
         >
-          {submitting ? "Starting test, please wait..." : "Start Test 🚀"}
+          {submitting || isLoading 
+            ? "Loading quiz, please wait..." 
+            : "Start Test 🚀"}
         </button>
       </form>
     </div>

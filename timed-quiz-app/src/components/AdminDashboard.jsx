@@ -14,7 +14,7 @@ import NavigationControls from "./admin/NavigationControls";
 import DataMigration from "./admin/DataMigration";
 
 // Main component that uses the context
-const AdminDashboardContent = () => {
+const AdminDashboardContent = ({ testMode, setTestMode, onNavigateToQuestions }) => {
   const {
     showMobileSnackbar,
     setShowMobileSnackbar,
@@ -74,13 +74,19 @@ const AdminDashboardContent = () => {
         {/* Uncomment to use when needed, then remove after migration */}
         {/* <DataMigration /> */}
 
-        {/* Visualizations Button */}
-        <div className="mb-8 flex justify-end print:hidden">
+        {/* Action Buttons */}
+        <div className="mb-8 flex justify-end gap-4 print:hidden">
           <button
             onClick={() => setShowVisualizations(true)}
             className="bg-blue-700 hover:bg-blue-800 text-white font-semibold px-6 py-3 rounded-lg shadow cursor-pointer"
           >
-            View Visualizations
+            📊 View Visualizations
+          </button>
+          <button
+            onClick={onNavigateToQuestions}
+            className="bg-green-700 hover:bg-green-800 text-white font-semibold px-6 py-3 rounded-lg shadow cursor-pointer"
+          >
+            📝 Manage Questions
           </button>
         </div>
 
@@ -140,10 +146,14 @@ const AdminDashboardContent = () => {
 };
 
 // Wrapper component that provides context to the dashboard
-const AdminDashboard = () => {
+const AdminDashboard = ({ testMode, setTestMode, onNavigateToQuestions }) => {
   return (
     <AdminProvider>
-      <AdminDashboardContent />
+      <AdminDashboardContent 
+        testMode={testMode} 
+        setTestMode={setTestMode} 
+        onNavigateToQuestions={onNavigateToQuestions} 
+      />
     </AdminProvider>
   );
 };

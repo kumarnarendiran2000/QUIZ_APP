@@ -5,10 +5,11 @@ import UserForm from "./components/UserForm";
 import QuizPage from "./components/QuizPage";
 import ResultPage from "./components/ResultPage";
 import AdminDashboard from "./components/AdminDashboard";
+import QuestionManager from "./components/QuestionManager";
 import Layout from "./components/Layout";
 import { db } from "./utils/firebase";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
-import { questions } from "./data/questions";
+import { loadQuestions, loadCorrectAnswers } from "./utils/questionsLoader";
 
 const QUIZ_DURATION = 1200; // 20 minutes in seconds
 
@@ -26,6 +27,28 @@ const App = () => {
   const [copyAttemptCount, setCopyAttemptCount] = useState(0);
   // New: testMode can be 'pre' or 'post'
   const [testMode, setTestMode] = useState("post");
+  
+  // Dynamic questions state
+  const [currentQuestions, setCurrentQuestions] = useState([]);
+  const [correctAnswers, setCorrectAnswers] = useState([]);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+
+  // Function to load questions when needed
+  const loadQuestionsIfNeeded = async () => {
+    if (questionsLoading || currentQuestions.length > 0) return; // Already loaded or loading
+    
+    setQuestionsLoading(true);
+    try {
+      const { questions: loadedQuestions, correctAnswers: loadedAnswers } = await loadQuestions();
+      setCurrentQuestions(loadedQuestions);
+      setCorrectAnswers(loadedAnswers);
+    } catch (error) {
+      console.error("Error loading questions:", error);
+      alert("Failed to load questions. Please refresh the page or contact the administrator.");
+    } finally {
+      setQuestionsLoading(false);
+    }
+  };
 
   // Load test mode from Firestore on mount and listen for changes
   useEffect(() => {
@@ -117,7 +140,7 @@ const App = () => {
         });
 
         // Normalize answers with nulls
-        const normalized = Array(questions.length).fill(null);
+        const normalized = Array(currentQuestions.length).fill(null);
         const saved = todayQuiz.answers || [];
         for (let i = 0; i < saved.length; i++) {
           normalized[i] = saved[i];
@@ -216,7 +239,10 @@ const App = () => {
 
   // ✅ Step 2: Start Quiz
   const startQuiz = async () => {
-    const initialAnswers = Array(questions.length).fill(null);
+    // Load questions before starting the quiz
+    await loadQuestionsIfNeeded();
+    
+    const initialAnswers = Array(currentQuestions.length).fill(null);
 
     // Import device detector functions
     const { detectDeviceType, getBrowserInfo, getScreenResolution } =
@@ -304,18 +330,17 @@ const App = () => {
 
   // ✅ Step 3: Submit Quiz
   const handleSubmit = async () => {
+    // Ensure questions are loaded for result calculation
+    await loadQuestionsIfNeeded();
+    
     const finalAnswers = [...answers];
 
-    // ✅ 1. Fetch correct answers securely from Firestore
-    const metadataRef = doc(db, "quiz_metadata", "default");
-    const metadataSnap = await getDoc(metadataRef);
-
-    if (!metadataSnap.exists()) {
-      alert("Scoring data missing!");
+    // ✅ 1. Use the dynamically loaded correct answers
+    if (correctAnswers.length === 0) {
+      console.error("Correct answers not loaded!");
+      alert("Scoring data not available. Please contact administrator.");
       return;
     }
-
-    const correctAnswers = metadataSnap.data().correctAnswers;
 
     // Import the quizStorage functions
     const { getQuizResponse, saveQuizResponse } = await import(
@@ -343,7 +368,7 @@ const App = () => {
     const detailedResults = [];
 
     finalAnswers.forEach((selected, i) => {
-      const question = questions[i];
+      const question = currentQuestions[i];
       const correct = correctAnswers[i];
       const isCorrect = selected === correct;
 
@@ -362,7 +387,7 @@ const App = () => {
     const answeredCount = finalAnswers.filter(
       (a) => typeof a === "number"
     ).length;
-    const unansweredCount = questions.length - answeredCount;
+    const unansweredCount = currentQuestions.length - answeredCount;
 
     // ⏱️ Calculate quiz duration using server timestamps as source of truth
     let timeTakenSec;
@@ -414,7 +439,7 @@ const App = () => {
         unansweredCount,
         score: correctCount,
         correctCount,
-        wrongCount: questions.length - correctCount,
+        wrongCount: currentQuestions.length - correctCount,
         detailedResults,
         quizDuration,
         completedAt: Date.now(),
@@ -438,32 +463,61 @@ const App = () => {
           userInfo={userInfo}
           setUserInfo={setUserInfo}
           onStartQuiz={startQuiz}
+          isLoading={questionsLoading}
         />
       )}
       {step === "quiz" && (
-        <QuizPage
-          answers={answers}
-          setAnswers={setAnswers}
-          timeLeft={timeLeft}
-          setTimeLeft={setTimeLeft}
-          onSubmit={handleSubmit}
-          user={user}
-          initialTabSwitchCount={tabSwitchCount}
-          initialCopyAttemptCount={copyAttemptCount}
-        />
+        questionsLoading ? (
+          <div className="flex justify-center items-center min-h-screen">
+            <div className="text-center">
+              <div className="text-xl text-gray-600 mb-4">Loading quiz...</div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            </div>
+          </div>
+        ) : (
+          <QuizPage
+            answers={answers}
+            setAnswers={setAnswers}
+            timeLeft={timeLeft}
+            setTimeLeft={setTimeLeft}
+            onSubmit={handleSubmit}
+            user={user}
+            initialTabSwitchCount={tabSwitchCount}
+            initialCopyAttemptCount={copyAttemptCount}
+            questions={currentQuestions}
+          />
+        )
       )}
       {step === "result" && (
-        <ResultPage
-          userInfo={userInfo}
-          userEmail={user?.email}
-          answers={answers}
-          detailedResults={detailedResults}
-          quizDuration={quizDuration}
-          testMode={testModeAtStart || testMode}
-        />
+        questionsLoading ? (
+          <div className="flex justify-center items-center min-h-screen">
+            <div className="text-center">
+              <div className="text-xl text-gray-600 mb-4">Loading results...</div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            </div>
+          </div>
+        ) : (
+          <ResultPage
+            userInfo={userInfo}
+            userEmail={user?.email}
+            answers={answers}
+            detailedResults={detailedResults}
+            quizDuration={quizDuration}
+            testMode={testModeAtStart || testMode}
+            questions={currentQuestions}
+            correctAnswers={correctAnswers}
+          />
+        )
       )}
       {step === "admin" && (
-        <AdminDashboard testMode={testMode} setTestMode={setTestMode} />
+        <AdminDashboard 
+          testMode={testMode} 
+          setTestMode={setTestMode}
+          onNavigateToQuestions={() => setStep("questionManager")}
+        />
+      )}
+      {step === "questionManager" && (
+        <QuestionManager onBack={() => setStep("admin")} />
       )}
     </Layout>
   );
