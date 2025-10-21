@@ -185,26 +185,6 @@ const QuestionManager = ({ onBack }) => {
         </button>
       </div>
 
-      {/* System Info */}
-      {questions.length > 0 && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-          <h3 className="text-lg font-semibold text-green-800 mb-2">✅ Question Management System</h3>
-          <p className="text-green-700 mb-2">
-            <strong>All questions are stored in Firestore quiz_questions collection</strong>
-          </p>
-          <p className="text-green-600 text-sm mb-2">
-            • <strong>Questions:</strong> Firestore quiz_questions collection<br/>
-            • <strong>Correct Answers:</strong> Stored with each question<br/>
-            • <strong>Management:</strong> Full UI-based editing through this interface
-          </p>
-          <div className="bg-green-100 border border-green-300 rounded p-3">
-            <p className="text-sm text-green-800">
-              🎉 <strong>Manage everything here:</strong> Add, edit, delete questions and set correct answers through this interface.
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-blue-50 p-4 rounded-lg">

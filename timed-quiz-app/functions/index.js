@@ -5,7 +5,6 @@
  */
 
 const {onCall} = require("firebase-functions/v2/https");
-const {onSchedule} = require("firebase-functions/v2/scheduler");
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const sgMail = require("@sendgrid/mail");
@@ -14,11 +13,12 @@ const sgMail = require("@sendgrid/mail");
 admin.initializeApp();
 
 // Set SendGrid API key from environment variables.
-if (!process.env.SENDGRID_API_KEY) {
-  console.error("FATAL ERROR: SENDGRID_API_KEY is not set.");
-  throw new Error("SENDGRID_API_KEY environment variable is required but not set.");
+// Only validate at runtime, not during deployment
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+} else {
+  console.warn("WARNING: SENDGRID_API_KEY is not set. Email function will fail at runtime.");
 }
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 /**
  * Sends a quiz result email to a user.
@@ -34,6 +34,15 @@ exports.sendQuizResultEmail = onCall(
       // For now, we're not using secrets management to avoid deployment issues
     },
     async (request) => {
+      // Validate SendGrid API key at runtime
+      if (!process.env.SENDGRID_API_KEY) {
+        console.error("FATAL ERROR: SENDGRID_API_KEY is not set.");
+        throw new functions.https.HttpsError(
+            "failed-precondition",
+            "Email service is not configured. Please contact administrator.",
+        );
+      }
+
       // Ensure the user is authenticated.
       if (!request.auth) {
         throw new functions.https.HttpsError(
@@ -562,196 +571,4 @@ exports.sendQuizResultEmail = onCall(
         );
       }
     },
-);
-
-/**
- * Auto-submit any hanging or incomplete quizzes.
- * This function runs every 5 minutes to check for quizzes that have been started
- * but not completed within the time limit (20 minutes + 5 minute buffer).
- */
-exports.autoSubmitIncompleteQuizzes = onSchedule(
-    {
-      schedule: "every 15 minutes", // Reduced frequency to save costs
-      region: "us-central1",
-      timeoutSeconds: 60,
-      memory: "256MiB",
-      retryCount: 3,
-      maxInstances: 1,
-    },
-    async (event) => {
-      console.log("Starting scheduled auto-submission check for incomplete quizzes");
-      
-      // Get all quiz responses that have startedAt but no completedAt
-      const QUIZ_DURATION = 1200; // 20 minutes in seconds
-      const BUFFER_TIME = 300; // 5 minute buffer in seconds
-      const MAX_QUIZ_DURATION_MS = (QUIZ_DURATION + BUFFER_TIME) * 1000;
-      
-      const now = Date.now();
-      const cutoffTime = now - MAX_QUIZ_DURATION_MS;
-      
-      try {
-        // Get all quiz responses that are incomplete (no completedAt)
-        // We'll filter by time after fetching to avoid complex indexes
-        console.log("Querying for incomplete quizzes...");
-        const incompleteQuery = await admin.firestore()
-          .collection("quiz_responses")
-          .where("completedAt", "==", null)
-          .get();
-        
-        console.log(`Found ${incompleteQuery.size} incomplete quizzes total`);
-        
-        // Filter locally for hanging quizzes (past cutoff time)
-        // This approach avoids the need for composite indexes
-        const allDocs = incompleteQuery.docs.filter(doc => {
-          const data = doc.data();
-          const startedAt = data.startedAt;
-          
-          // Conditions for auto-submission:
-          // 1. Started in the past and more than QUIZ_DURATION + buffer ago
-          // 2. Started in the future (invalid timestamp)
-          // 3. Missing or invalid startedAt but has other quiz data
-          
-          if (!startedAt) {
-            // No startedAt but has quiz data - consider stale
-            return true;
-          }
-          
-          if (startedAt > now) {
-            console.log(`Quiz ${doc.id} has future timestamp: ${new Date(startedAt).toISOString()}`);
-            return true; // Future timestamp (invalid)
-          }
-          
-          if (startedAt < cutoffTime) {
-            console.log(`Quiz ${doc.id} has exceeded time limit (started: ${new Date(startedAt).toISOString()})`);
-            return true; // Started too long ago
-          }
-          
-          return false; // Still active quiz
-        });
-        
-        console.log(`After filtering, found ${allDocs.length} quizzes needing auto-submission`);
-        
-        const batch = admin.firestore().batch();
-        let autoSubmitCount = 0;
-        
-        // Get the correct answers from metadata first
-        const metadataDoc = await admin.firestore().collection("quiz_metadata").doc("default").get();
-        if (!metadataDoc.exists) {
-          console.error("Quiz metadata not found!");
-          return { error: "Quiz metadata not found" };
-        }
-        
-        const correctAnswers = metadataDoc.data().correctAnswers || [];
-        
-        for (const doc of allDocs) {
-          const quizData = doc.data();
-          
-          // Special handling for submissions that already have emails sent but incomplete data
-          // This handles the "hanging" submissions like Meghana's quiz
-          if (quizData.emailSent === true && !quizData.completedAt) {
-            console.log(`Quiz ${doc.id} has emailSent=true but no completedAt - fixing incomplete submission`);
-          }
-          
-          // Handle invalid timestamps
-          let actualStartedAt = quizData.startedAt;
-          let isInvalidTimestamp = false;
-          let autoSubmitReasonValue = "serverTimeout";
-          
-          // Check if startedAt is in the future or invalid
-          if (!actualStartedAt) {
-            console.log(`Missing startedAt for quiz ${doc.id}. Using current time minus quiz duration.`);
-            actualStartedAt = now - (QUIZ_DURATION * 1000);
-            isInvalidTimestamp = true;
-            autoSubmitReasonValue = "missingTimestamp";
-          } else if (actualStartedAt > now || actualStartedAt < (now - (30 * 24 * 60 * 60 * 1000))) { // More than 30 days ago or in future
-            console.log(`Invalid timestamp detected for quiz ${doc.id}: ${actualStartedAt}. Using current time minus quiz duration.`);
-            actualStartedAt = now - (QUIZ_DURATION * 1000); // Assume it started exactly when it should have ended
-            isInvalidTimestamp = true;
-            autoSubmitReasonValue = "invalidTimestamp";
-          }
-          
-          // Calculate correct answers and score
-          const answers = quizData.answers || [];
-          
-          // Skip quizzes without answers array (might be corrupted data)
-          if (!Array.isArray(answers)) {
-            console.log(`Skipping quiz ${doc.id} due to invalid answers format`);
-            continue;
-          }
-          
-          // Process answers and calculate score
-          let correctCount = 0;
-          let answeredCount = 0;
-          
-          answers.forEach((selected, i) => {
-            if (selected !== null && typeof selected === "number") {
-              answeredCount++;
-              
-              if (i < correctAnswers.length && selected === correctAnswers[i]) {
-                correctCount++;
-              }
-            }
-          });
-          
-          // Calculate time taken using corrected timestamp
-          const timeTakenSec = Math.min(
-            Math.max(0, Math.floor((now - actualStartedAt) / 1000)),
-            QUIZ_DURATION
-          );
-          const mins = Math.floor(timeTakenSec / 60);
-          const secs = timeTakenSec % 60;
-          const quizDuration = `${mins}m ${secs}s`;
-          
-          // Prepare update data
-          const updateData = {
-            completedAt: now,
-            quizDuration: quizDuration,
-            answeredCount: answeredCount,
-            unansweredCount: answers.length - answeredCount,
-            correctCount: correctCount,
-            wrongCount: answeredCount - correctCount,
-            score: correctCount,
-            submissionType: quizData.emailSent === true ? quizData.submissionType || "manual" : "auto",
-            autoSubmitReason: quizData.emailSent === true ? (quizData.autoSubmitReason || "emailSentIncomplete") : autoSubmitReasonValue,
-            lastUpdated: now,
-          };
-          
-          // If we corrected an invalid timestamp, also update startedAt
-          if (isInvalidTimestamp) {
-            updateData.startedAt = actualStartedAt;
-            updateData.originalInvalidStartedAt = quizData.startedAt; // Keep record of the invalid timestamp
-          }
-          
-          // If answers are missing but emailSent is true, add an empty answers array to avoid null errors
-          if (quizData.emailSent === true && (!quizData.answers || !Array.isArray(quizData.answers))) {
-            console.log(`Quiz ${doc.id} has emailSent=true but no answers array - fixing incomplete submission`);
-            updateData.answers = Array(answers.length).fill(null);
-            updateData.answeredCount = 0;
-            updateData.unansweredCount = answers.length;
-            updateData.score = 0;
-            updateData.correctCount = 0;
-            updateData.wrongCount = 0;
-            updateData.detailedResults = [];
-            updateData.submissionCompleted = true;
-            updateData.resultsCalculated = true;
-          }
-          
-          // Add to batch
-          batch.update(doc.ref, updateData);
-          autoSubmitCount++;
-        }
-        
-        if (autoSubmitCount > 0) {
-          await batch.commit();
-          console.log(`Successfully auto-submitted ${autoSubmitCount} hanging quizzes`);
-        } else {
-          console.log("No hanging quizzes needed auto-submission");
-        }
-        
-        return { autoSubmitted: autoSubmitCount };
-      } catch (error) {
-        console.error("Error in auto-submit function:", error);
-        return { error: error.message };
-      }
-    }
 );
