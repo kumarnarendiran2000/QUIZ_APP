@@ -11,7 +11,6 @@ import DeleteModal from "./admin/DeleteModal";
 import BulkDeleteModal from "./admin/BulkDeleteModal";
 import EmailToast from "./admin/EmailToast";
 import NavigationControls from "./admin/NavigationControls";
-import DataMigration from "./admin/DataMigration";
 
 // Main component that uses the context
 const AdminDashboardContent = ({ testMode, setTestMode, onNavigateToQuestions }) => {
@@ -137,9 +136,6 @@ const AdminDashboardContent = ({ testMode, setTestMode, onNavigateToQuestions })
 
         {/* Bulk Delete Confirmation Modal */}
         {showBulkDeleteModal && <BulkDeleteModal />}
-
-        {/* Data Migration Component - Uncomment to use
-        <DataMigration /> */}
       </div>
     </>
   );

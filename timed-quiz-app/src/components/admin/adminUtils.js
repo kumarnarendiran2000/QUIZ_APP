@@ -47,10 +47,17 @@ export const sendEmail = async (user, setEmailToast, setEmailSending, setEmailUs
   if (!user) return { success: false, error: "No user provided" };
 
   try {
+    // Add a small note in the toast if this is a resend
+    let infoMessage = `Sending email to ${user.name} (${user.email})...`;
+    if (user.emailSent === true && user.emailSentAt) {
+      const sentDate = new Date(user.emailSentAt.toDate()).toLocaleString();
+      infoMessage = `Resending email to ${user.name} (${user.email})... (previously sent on ${sentDate})`;
+    }
+    
     setEmailToast({
       show: true,
       type: "info",
-      message: `Sending email to ${user.name} (${user.email})...`,
+      message: infoMessage,
     });
 
     // Load questions and correct answers dynamically
@@ -99,23 +106,57 @@ export const sendEmail = async (user, setEmailToast, setEmailSending, setEmailUs
       score: correct,
     });
 
+    // Customize success message based on whether this was a resend
+    let successMessage = `Email sent successfully to ${user.name} (${user.email})`;
+    if (user.emailSent === true && user.emailSentAt) {
+      successMessage = `Email resent successfully to ${user.name} (${user.email})`;
+    }
+    
     setEmailToast({
       show: true,
       type: "success",
-      message: `Email sent successfully to ${user.name} (${user.email})`,
+      message: successMessage,
     });
-
-    return { success: true };
+    
+    return { success: true, toastSet: true };
   } catch (error) {
     console.error("Error sending email:", error);
+    
+    // Create a more user-friendly error message
+    let errorMessage = `Failed to send email to ${user.name} (${user.email})`;
+    
+    // Add specific error details if available
+    if (error.message) {
+      // For common error types, provide more user-friendly messages
+      if (error.message.includes("unauthorized") || error.message.includes("401")) {
+        errorMessage += ": Authentication error with email service. Please check API key configuration.";
+      } else if (error.message.includes("timeout") || error.message.includes("ECONNREFUSED")) {
+        errorMessage += ": Connection timeout. Please check network connectivity.";
+      } else if (error.message.includes("not found") || error.message.includes("404")) {
+        errorMessage += ": Resource not found. Data may be missing or deleted.";
+      } else {
+        // Generic error message with details
+        errorMessage += `: ${error.message}`;
+      }
+    }
     
     setEmailToast({
       show: true,
       type: "error",
-      message: `Failed to send email to ${user.name} (${user.email}): ${error.message}`,
+      message: errorMessage,
     });
     
-    return { success: false, error: error.message };
+    // Auto-dismiss error toast after 8 seconds
+    setTimeout(() => {
+      setEmailToast((prev) => {
+        if (prev.type === "error") {
+          return { ...prev, show: false };
+        }
+        return prev;
+      });
+    }, 8000);
+    
+    return { success: false, error: error.message, toastSet: true };
   } finally {
     setEmailSending(false);
     setEmailUserInProgress(null);

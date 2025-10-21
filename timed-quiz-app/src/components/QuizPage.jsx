@@ -85,11 +85,29 @@ const QuizPage = ({
       // Prevent multiple auto-submissions
       autoSubmittedRef.current = true;
       setSubmitting(true);
-
-      // Record time expiry auto-submission reason
-      if (user?.uid) {
-        handleAutoSubmit(user, "timeExpired", onSubmit);
-      } else {
+      
+      console.log("Timer expired, triggering auto-submission");
+      
+      try {
+        // Record time expiry auto-submission reason
+        if (user?.uid) {
+          // Set a fallback timeout to ensure submission happens even if there are network issues
+          const fallbackTimer = setTimeout(() => {
+            console.log("Fallback timer triggered - forcing submission");
+            onSubmit();
+          }, 5000); // 5 second failsafe
+          
+          // Try normal submission first
+          handleAutoSubmit(user, "timeExpired", () => {
+            clearTimeout(fallbackTimer); // Clear the fallback if normal submission works
+            onSubmit();
+          });
+        } else {
+          onSubmit();
+        }
+      } catch (error) {
+        console.error("Error during auto-submission:", error);
+        // Force submission even if there was an error
         onSubmit();
       }
     }

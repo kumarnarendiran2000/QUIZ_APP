@@ -7,6 +7,7 @@ import ResultPage from "./components/ResultPage";
 import AdminDashboard from "./components/AdminDashboard";
 import QuestionManager from "./components/QuestionManager";
 import Layout from "./components/Layout";
+import ErrorModal from "./components/ErrorModal";
 import { db } from "./utils/firebase";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { loadQuestions, loadCorrectAnswers } from "./utils/questionsLoader";
@@ -33,6 +34,13 @@ const App = () => {
   const [correctAnswers, setCorrectAnswers] = useState([]);
   const [questionsLoading, setQuestionsLoading] = useState(false);
 
+  // Error modal state
+  const [errorModal, setErrorModal] = useState({
+    isOpen: false,
+    title: "",
+    message: ""
+  });
+
   // Function to load questions when needed
   const loadQuestionsIfNeeded = async () => {
     if (questionsLoading || currentQuestions.length > 0) return; // Already loaded or loading
@@ -47,6 +55,43 @@ const App = () => {
       alert("Failed to load questions. Please refresh the page or contact the administrator.");
     } finally {
       setQuestionsLoading(false);
+    }
+  };
+  
+  // Centralized error handling function
+  const handleError = (title, message, returnToLogin = true) => {
+    console.log(`Error occurred: ${title} - Return to login: ${returnToLogin}`);
+    
+    setErrorModal({
+      isOpen: true,
+      title: title,
+      message: message
+    });
+    
+    // If returnToLogin is true, we'll set the step back to login when modal is closed
+    if (returnToLogin) {
+      console.log('Setting user to null to force return to login');
+      setUser(null);
+    }
+  };
+  
+  // Handle closing of error modal
+  const handleErrorClose = () => {
+    const wasErrorModal = errorModal.isOpen;
+    setErrorModal({ ...errorModal, isOpen: false });
+    
+    console.log(`Error modal closed. Current user: ${user ? 'Logged in' : 'Not logged in'}, Current step: ${step}`);
+    
+    // Check if the user state is null, which means we had an authentication error
+    if (!user) {
+      console.log('User is null, returning to login step');
+      // Always return to login step for authentication errors
+      setStep("login");
+    } else if (step === "login" && wasErrorModal) {
+      console.log('Already on login step, ensuring we stay there');
+      // If we're on the login step and there was an error modal showing,
+      // make sure we stay on the login step
+      setStep("login");
     }
   };
 
@@ -206,28 +251,62 @@ const App = () => {
 
     // If user cannot take quiz in current mode
     if (!canTake) {
-      if (reason === "pre_test_required") {
-        // Show message that pre-test is required before post-test
-        alert("You need to complete a pre-test before taking a post-test.");
-      } else if (reason === "post_test_already_taken") {
-        // Load the existing post-test quiz and show results
-        const existingPostTest = await getQuizResponse(
-          loggedInUser.uid,
-          "post"
+      // For most error cases, we want to start with no user logged in
+      // but for cases where we're showing results, we'll set the user later
+      setUser(null);
+      
+      // BYPASSED: Pre-test requirement check removed
+      // BYPASSED: Same day restriction check removed
+      
+      if (reason === "out_of_order") {
+        // User trying to take pre-test after post-test
+        handleError(
+          "Test Order Restriction",
+          "You've already taken a post-test. You can't take a pre-test after completing a post-test. Please contact the test instructor for more details."
         );
-        if (existingPostTest) {
+        return; // Important: Exit function to prevent proceeding to next step
+      } else if (reason === "already_taken_today") {
+        // User is retaking the same test on the same day
+        if (existingQuiz) {
+          console.log(`User already took ${currentTestMode} test today, showing results`);
           setUser(loggedInUser);
           setUserInfo({
-            name: existingPostTest.name,
-            mobile: existingPostTest.mobile,
-            regno: existingPostTest.regno || "",
+            name: existingQuiz.name,
+            mobile: existingQuiz.mobile,
+            regno: existingQuiz.regno || "",
           });
-          setAnswers(existingPostTest.answers || []);
-          setDetailedResults(existingPostTest.detailedResults || []);
-          setQuizDuration(existingPostTest.quizDuration || "N/A");
-          setTestModeAtStart("post");
+          setAnswers(existingQuiz.answers || []);
+          setDetailedResults(existingQuiz.detailedResults || []);
+          setQuizDuration(existingQuiz.quizDuration || "N/A");
+          setTestModeAtStart(currentTestMode);
           setStep("result");
           return;
+        }
+      } else if (reason === "pre_test_already_taken" || reason === "post_test_already_taken") {
+        // User trying to take a test they've already completed
+        // Load the existing quiz and show results instead of showing an error
+        if (existingQuiz) {
+          console.log(`User already taken ${existingQuiz.testMode} test, showing results`);
+          setUser(loggedInUser);
+          setUserInfo({
+            name: existingQuiz.name,
+            mobile: existingQuiz.mobile,
+            regno: existingQuiz.regno || "",
+          });
+          setAnswers(existingQuiz.answers || []);
+          setDetailedResults(existingQuiz.detailedResults || []);
+          setQuizDuration(existingQuiz.quizDuration || "N/A");
+          setTestModeAtStart(existingQuiz.testMode || currentTestMode);
+          setStep("result");
+          return;
+        } else {
+          // This shouldn't happen normally, but as a fallback show an error message
+          const testType = reason === "pre_test_already_taken" ? "pre-test" : "post-test";
+          handleError(
+            `${testType.charAt(0).toUpperCase() + testType.slice(1)} Already Taken`,
+            `You've already taken a ${testType}. Each candidate can only take one ${testType}. Please contact the test instructor for more details.`
+          );
+          return; // Important: Exit function to prevent proceeding to next step
         }
       }
     }
@@ -280,47 +359,53 @@ const App = () => {
     setTestModeAtStart(mode);
 
     if (user) {
-      // Import the saveQuizResponse function
-      const { saveQuizResponse, getQuizResponse } = await import(
-        "./utils/quizStorage"
-      );
-
-      // Check if the user has already started a quiz today
-      const existingQuiz = await getQuizResponse(user.uid, mode);
-      const currentStartedAt = existingQuiz?.startedAt;
-
-      // Prepare device data
-      const deviceData = {
-        deviceType:
-          deviceType !== "Unknown"
-            ? deviceType
-            : existingQuiz?.deviceType || "Unknown",
-        browserInfo:
-          browserInfo !== "Unknown"
-            ? browserInfo
-            : existingQuiz?.browserInfo || "Unknown",
-        screenResolution:
-          screenResolution !== "Unknown"
-            ? screenResolution
-            : existingQuiz?.screenResolution || "Unknown",
-      };
-
-      // Save the quiz with our new format
-      await saveQuizResponse(user.uid, mode, {
-        name: userInfo.name,
-        email: user.email,
-        mobile: userInfo.mobile,
-        regno: userInfo.regno,
-        // Only set startedAt if it doesn't exist yet - never overwrite it
-        ...(currentStartedAt ? {} : { startedAt: Date.now() }),
-        answers: initialAnswers,
-        testModeAtStart: mode,
-        // Add device information
-        ...deviceData,
-        // Initialize submission type
-        submissionType: "manual", // Will be updated to "auto" if auto-submitted
-        autoSubmitReason: null, // Will be filled if auto-submitted
-      });
+      try {
+        // Import the saveQuizResponse function
+        const { saveQuizResponse, getQuizResponse } = await import(
+          "./utils/quizStorage"
+        );
+  
+        // Check if the user has already started a quiz today
+        const existingQuiz = await getQuizResponse(user.uid, mode);
+        const currentStartedAt = existingQuiz?.startedAt;
+  
+        // Prepare device data
+        const deviceData = {
+          deviceType:
+            deviceType !== "Unknown"
+              ? deviceType
+              : existingQuiz?.deviceType || "Unknown",
+          browserInfo:
+            browserInfo !== "Unknown"
+              ? browserInfo
+              : existingQuiz?.browserInfo || "Unknown",
+          screenResolution:
+            screenResolution !== "Unknown"
+              ? screenResolution
+              : existingQuiz?.screenResolution || "Unknown",
+        };
+  
+        // Save the quiz with our new format
+        await saveQuizResponse(user.uid, mode, {
+          name: userInfo.name,
+          email: user.email,
+          mobile: userInfo.mobile,
+          regno: userInfo.regno,
+          // Only set startedAt if it doesn't exist yet - never overwrite it
+          ...(currentStartedAt ? {} : { startedAt: Date.now() }),
+          answers: initialAnswers,
+          testModeAtStart: mode,
+          // Add device information
+          ...deviceData,
+          // Initialize submission type
+          submissionType: "manual", // Will be updated to "auto" if auto-submitted
+          autoSubmitReason: null, // Will be filled if auto-submitted
+        });
+      } catch (error) {
+        console.error("Error saving initial quiz data:", error);
+        // Continue with the quiz even if there was an error saving to Firestore
+        // The server-side backup will eventually sync any hanging quizzes
+      }
     }
 
     setTimeLeft(QUIZ_DURATION);
@@ -337,8 +422,11 @@ const App = () => {
 
     // ✅ 1. Use the dynamically loaded correct answers
     if (correctAnswers.length === 0) {
-      console.error("Correct answers not loaded!");
-      alert("Scoring data not available. Please contact administrator.");
+      handleError(
+        "Scoring Error",
+        "Scoring data not available. Please contact the administrator.",
+        false // Don't return to login
+      );
       return;
     }
 
@@ -428,26 +516,77 @@ const App = () => {
     const quizDuration = `${mins}m ${secs}s`;
 
     if (user) {
-      // Save using our new format
-      await saveQuizResponse(user.uid, currentTestMode, {
-        name: userInfo.name,
-        email: user.email,
-        mobile: userInfo.mobile,
-        regno: userInfo.regno,
-        answers: finalAnswers,
-        answeredCount,
-        unansweredCount,
-        score: correctCount,
-        correctCount,
-        wrongCount: currentQuestions.length - correctCount,
-        detailedResults,
-        quizDuration,
-        completedAt: Date.now(),
-        // Preserve submission type and reason
-        submissionType,
-        autoSubmitReason,
-      });
+      try {
+        // Add device information for the submission
+        const { detectDeviceType, getBrowserInfo, getScreenResolution } = await import(
+          "./utils/deviceDetector"
+        );
+        
+        // CRITICAL - First do a minimal update with completedAt to mark quiz as finished
+        // This prevents hanging/incomplete submissions like Meghana's case
+        try {
+          // First update only essential completion data
+          await saveQuizResponse(user.uid, currentTestMode, {
+            completedAt: Date.now(),
+            submissionType,
+            autoSubmitReason,
+          });
+          console.log("Quiz marked as completed successfully");
+        } catch (minUpdateError) {
+          console.error("Failed to mark quiz as completed:", minUpdateError);
+          // Continue anyway - we'll try the full update next
+        }
+        
+        // Set up a promise with timeout to ensure we don't hang indefinitely on saveQuizResponse
+        const saveWithTimeout = (timeoutMs) => {
+          return Promise.race([
+            saveQuizResponse(user.uid, currentTestMode, {
+              name: userInfo.name,
+              email: user.email,
+              mobile: userInfo.mobile,
+              regno: userInfo.regno,
+              answers: finalAnswers,
+              answeredCount,
+              unansweredCount,
+              score: correctCount,
+              correctCount,
+              wrongCount: currentQuestions.length - correctCount,
+              detailedResults,
+              quizDuration,
+              completedAt: Date.now(), // Use fresh timestamp
+              // Preserve submission type and reason
+              submissionType,
+              autoSubmitReason,
+              // Add device information
+              deviceType: detectDeviceType(),
+              browserInfo: getBrowserInfo(),
+              screenResolution: getScreenResolution(),
+              // Add safety flags to prevent partial completion
+              resultsCalculated: true,
+              submissionCompleted: true
+            }),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error("Firestore save timed out")), timeoutMs)
+            )
+          ]);
+        };
+        
+        // Try to save with a 8-second timeout
+        await saveWithTimeout(8000);
+        console.log("Quiz submission saved successfully to Firestore");
+      } catch (error) {
+        console.error("Error saving quiz submission:", error);
+        // Continue with local results even if Firestore save failed
+        // The server-side function will eventually check for hanging quizzes
+        
+        // Show an alert to the user so they're aware of the issue
+        // This is non-blocking, so the user can still see their results
+        alert("Warning: There was an issue saving your quiz results to our servers. " +
+              "Your results are displayed now, but you may need to contact support if " +
+              "they don't appear in your history later.");
+      }
 
+      // Always update the UI with results, even if saving to Firestore failed
       setDetailedResults(detailedResults);
       setQuizDuration(quizDuration);
     }
@@ -519,6 +658,14 @@ const App = () => {
       {step === "questionManager" && (
         <QuestionManager onBack={() => setStep("admin")} />
       )}
+      
+      {/* Error Modal */}
+      <ErrorModal 
+        isOpen={errorModal.isOpen}
+        title={errorModal.title}
+        message={errorModal.message}
+        onClose={handleErrorClose}
+      />
     </Layout>
   );
 };

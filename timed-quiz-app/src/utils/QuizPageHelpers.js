@@ -103,7 +103,7 @@ export async function updateDeviceInfo(user) {
     currentTestMode,
     {
       deviceType: detectDeviceType(),
-      browser: getBrowserInfo(),
+      browserInfo: getBrowserInfo(),
       screenResolution: getScreenResolution(),
     }
   );

@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 import { db, sendQuizResultEmail, auth } from "../utils/firebase";
+import { generateQuizDocId } from "../utils/quizStorage";
 
 const ResultPage = ({
   userInfo,
@@ -43,7 +44,13 @@ const ResultPage = ({
 
         // Check if email has already been sent for this user
         if (auth.currentUser) {
-          const userRef = doc(db, "quiz_responses", auth.currentUser.uid);
+          // Use the new document ID format (userUid_testMode_YYYYMMDD)
+          
+          // Get today's date in YYYYMMDD format for the document ID
+          const docId = generateQuizDocId(auth.currentUser.uid, testMode);
+          
+          console.log(`Checking for email sent flag in document: ${docId}`);
+          const userRef = doc(db, "quiz_responses", docId);
           const userSnap = await getDoc(userRef);
 
           if (userSnap.exists() && userSnap.data().emailSent === true) {
@@ -51,6 +58,17 @@ const ResultPage = ({
               "Email was already sent previously. Skipping email send."
             );
             setEmailAlreadySent(true);
+          } else {
+            // Also check the old document ID format as a fallback
+            const oldFormatRef = doc(db, "quiz_responses", auth.currentUser.uid);
+            const oldFormatSnap = await getDoc(oldFormatRef);
+            
+            if (oldFormatSnap.exists() && oldFormatSnap.data().emailSent === true) {
+              console.log(
+                "Email was already sent previously in old document format. Skipping email send."
+              );
+              setEmailAlreadySent(true);
+            }
           }
         }
       } catch (error) {
@@ -70,6 +88,16 @@ const ResultPage = ({
     // Send email for both pre and post test after results are loaded
     const sendEmail = async () => {
       try {
+        // First check if the submission has the required data before sending email
+        // This prevents the "Meghana scenario" where email is sent but data is incomplete
+        if (!detailedResults || detailedResults.length === 0 || !quizDuration || quizDuration === "N/A") {
+          console.warn("Missing critical quiz data - skipping automatic email sending");
+          setShowToast(true);
+          setToastType("error");
+          setToastMsg("Cannot send email - quiz data incomplete. Please contact support.");
+          return;
+        }
+        
         setShowToast(true);
         setToastType("info");
         setToastMsg("Please wait, sending your test results to your email...");
