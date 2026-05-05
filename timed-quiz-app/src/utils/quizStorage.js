@@ -167,11 +167,45 @@ export async function canTakeQuiz(userUid, currentTestMode) {
 }
 
 /**
+ * Remove undefined values from an object recursively
+ * Firestore doesn't support undefined values
+ */
+function cleanUndefinedValues(obj) {
+  if (obj === null || obj === undefined) {
+    return null;
+  }
+  
+  if (Array.isArray(obj)) {
+    // For arrays, keep undefined as null to maintain array indices
+    return obj.map(item => item === undefined ? null : cleanUndefinedValues(item));
+  }
+  
+  if (typeof obj === 'object') {
+    const cleaned = {};
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        const value = obj[key];
+        if (value !== undefined) {
+          cleaned[key] = cleanUndefinedValues(value);
+        }
+        // Skip undefined values in objects (don't include the key at all)
+      }
+    }
+    return cleaned;
+  }
+  
+  return obj;
+}
+
+/**
  * Save quiz response to Firestore with the new document ID format
  */
 export async function saveQuizResponse(userUid, testMode, data, merge = true) {
   const docId = generateQuizDocId(userUid, testMode);
   const ref = doc(db, "quiz_responses", docId);
+  
+  // Debug: Log incoming data to see what has undefined
+  console.log("saveQuizResponse called with data:", JSON.stringify(data, (key, value) => value === undefined ? 'UNDEFINED' : value));
   
   // Always include userUid and testMode in the data
   const enhancedData = {
@@ -183,19 +217,26 @@ export async function saveQuizResponse(userUid, testMode, data, merge = true) {
     lastUpdated: Date.now() // Add timestamp to track last update time
   };
   
+  // Clean undefined values from the data before saving
+  const cleanedData = cleanUndefinedValues(enhancedData);
+  
+  // Debug: Log cleaned data
+  console.log("Cleaned data:", JSON.stringify(cleanedData, null, 2));
+  
   // Add retry mechanism for more reliable saving
   let attempts = 0;
   const maxAttempts = 3;
   
   while (attempts < maxAttempts) {
     try {
-      await setDoc(ref, enhancedData, { merge });
+      await setDoc(ref, cleanedData, { merge });
       console.log(`Quiz data saved successfully for ${userUid} on attempt ${attempts + 1}`);
       return docId;
     } catch (error) {
       attempts++;
       if (attempts >= maxAttempts) {
         console.error(`Failed to save quiz data after ${maxAttempts} attempts:`, error);
+        console.error(`Data that failed:`, JSON.stringify(cleanedData, null, 2));
         throw error;
       }
       console.warn(`Save attempt ${attempts} failed, retrying in 1s...`, error);

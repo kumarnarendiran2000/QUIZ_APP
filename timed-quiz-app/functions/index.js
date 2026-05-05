@@ -89,8 +89,10 @@ exports.sendQuizResultEmail = onCall(
         console.log(`Fetching quiz response for user ID: ${targetUserId}`);
         
         // Try to find the document with the new format first (userUid_testMode_YYYYMMDD)
-        // Get today's date in YYYYMMDD format
-        const today = new Date().toISOString().split('T')[0].replace(/-/g, '');
+        // Get today's date in YYYYMMDD format using IST timezone (UTC+5:30 = +330 minutes)
+        const now = new Date();
+        const istDate = new Date(now.getTime() + (330 * 60000)); // Add IST offset
+        const today = istDate.toISOString().split('T')[0].replace(/-/g, '');
         const testMode = testModeFromFrontend || "post"; // Default to post-test if not specified
         const newFormatDocId = `${targetUserId}_${testMode}_${today}`;
         

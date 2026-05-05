@@ -1,15 +1,22 @@
 // src/components/Login.jsx
 import React, { useState, useEffect } from "react";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { auth } from "../utils/firebase";
+import { auth, db } from "../utils/firebase";
 import { getTestMode } from "../utils/quizSettings";
+import { doc, getDoc } from "firebase/firestore";
+import ErrorModal from "./ErrorModal";
 
 const Login = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [testMode, setTestMode] = useState(null);
+  const [timerMinutes, setTimerMinutes] = useState(20);
+  const [showError, setShowError] = useState(false);
 
   useEffect(() => {
     getTestMode().then((mode) => setTestMode(mode));
+    getDoc(doc(db, "quiz_settings", "timer")).then((snap) => {
+      if (snap.exists()) setTimerMinutes(snap.data().minutes || 20);
+    });
   }, []);
 
   const handleLogin = async () => {
@@ -29,7 +36,7 @@ const Login = ({ onLogin }) => {
       onLogin(result.user);
     } catch (err) {
       console.error("Login failed:", err);
-      alert('Login failed. Please try again.');
+      setShowError(true);
       setLoading(false);
     }
   };
@@ -58,8 +65,8 @@ const Login = ({ onLogin }) => {
           </li>
           <li>
             The test is <strong>time-based</strong> — you’ll have{" "}
-            <span className="text-blue-700 font-medium">20 minutes</span> to
-            answer <strong>40 questions</strong>.
+            <span className="text-blue-700 font-medium">{timerMinutes} minutes</span>{" "}
+            to answer all questions.
           </li>
           <li>
             <span className="text-red-700 font-bold">
@@ -93,8 +100,8 @@ const Login = ({ onLogin }) => {
             <strong>automatically submitted</strong>, even if unanswered.
           </li>
           <li>
-            At the end, your <strong>score</strong>, <strong>time taken</strong>
-            , and the number of <strong>answered</strong> and{" "}
+            At the end, your <strong>score</strong>, <strong>time taken</strong>,
+            and the number of <strong>answered</strong> and{" "}
             <strong>unanswered</strong> questions will be shown.
             {testMode === "post" && (
               <>
@@ -127,6 +134,13 @@ const Login = ({ onLogin }) => {
           </div>
         </div>
       </div>
+
+      <ErrorModal
+        isOpen={showError}
+        title="Login Failed"
+        message="Unable to sign in. Please try again."
+        onClose={() => setShowError(false)}
+      />
     </div>
   );
 };

@@ -5,7 +5,7 @@ const ErrorModal = ({ isOpen, title, message, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 backdrop-blur-sm">
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 animate-fadeIn">
         <div className="mb-4">
           <h3 className="text-xl font-bold text-red-600">{title || "Error"}</h3>
@@ -16,7 +16,7 @@ const ErrorModal = ({ isOpen, title, message, onClose }) => {
         <div className="flex justify-end">
           <button
             onClick={onClose}
-            className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-red-500 cursor-pointer"
             autoFocus
           >
             Close

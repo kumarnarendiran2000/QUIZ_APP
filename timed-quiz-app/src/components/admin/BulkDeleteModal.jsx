@@ -12,6 +12,9 @@ const BulkDeleteModal = () => {
     selectedIds,
     setSelectedIds,
     setSelectAll,
+    setToastMessage,
+    setToastType,
+    setShowToast,
   } = useAdmin();
 
   if (!showBulkDeleteModal) {
@@ -23,9 +26,11 @@ const BulkDeleteModal = () => {
     const results = await bulkDeleteSubmissions(selectedIds);
 
     if (results.errors.length > 0) {
-      alert(
+      setToastMessage(
         `Deleted ${results.success} items. Failed to delete ${results.errors.length} items.`
       );
+      setToastType("warning");
+      setShowToast(true);
     }
 
     // Clear selections and close modal

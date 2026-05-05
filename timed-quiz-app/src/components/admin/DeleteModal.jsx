@@ -12,6 +12,9 @@ const DeleteModal = () => {
     selectedIds,
     setSelectedIds,
     setSelectAll,
+    setToastMessage,
+    setToastType,
+    setShowToast,
   } = useAdmin();
 
   if (!deleteTarget) {
@@ -30,7 +33,9 @@ const DeleteModal = () => {
     if (success) {
       setDeleteTarget(null);
     } else {
-      alert("Failed to delete record. Please try again.");
+      setToastMessage("Failed to delete record. Please try again.");
+      setToastType("error");
+      setShowToast(true);
     }
 
     setDeleteLoading(false);

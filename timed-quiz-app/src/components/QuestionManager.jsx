@@ -5,8 +5,7 @@ import {
   addQuestionToFirestore,
   updateQuestionInFirestore,
   deleteQuestionFromFirestore,
-  getQuestionStatistics,
-  listenToQuestions
+  getQuestionStatistics
 } from "../utils/questionsStorage";
 
 const QuestionManager = ({ onBack }) => {
@@ -30,6 +29,12 @@ const QuestionManager = ({ onBack }) => {
   const [modalMessage, setModalMessage] = useState("");
   const [questionToDelete, setQuestionToDelete] = useState(null);
 
+  // Loading states for async actions
+  const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+
   // Form state
   const [formData, setFormData] = useState({
     question: "",
@@ -51,7 +56,8 @@ const QuestionManager = ({ onBack }) => {
       setQuestions(questionsData);
     } catch (error) {
       console.error("Error loading questions:", error);
-      alert("Failed to load questions. Please refresh the page.");
+      setModalMessage("Failed to load questions. Please refresh the page.");
+      setShowSuccessModal(true);
     } finally {
       setLoading(false);
     }
@@ -92,29 +98,26 @@ const QuestionManager = ({ onBack }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validation
+
     if (!formData.question.trim()) {
       setModalMessage("Question is required");
       setShowSuccessModal(true);
       return;
     }
-    
     if (formData.options.some(opt => !opt.trim())) {
       setModalMessage("All options are required");
       setShowSuccessModal(true);
       return;
     }
-    
     if (!formData.topic.trim()) {
       setModalMessage("Topic is required");
       setShowSuccessModal(true);
       return;
     }
 
+    setSubmitting(true);
     try {
       if (editingQuestion) {
-        // Update existing question
         const success = await updateQuestionInFirestore(editingQuestion.id, formData);
         if (success) {
           setModalMessage("Question updated successfully!");
@@ -127,7 +130,6 @@ const QuestionManager = ({ onBack }) => {
           setShowSuccessModal(true);
         }
       } else {
-        // Add new question
         const docId = await addQuestionToFirestore(formData);
         if (docId) {
           setModalMessage("Question added successfully!");
@@ -144,6 +146,8 @@ const QuestionManager = ({ onBack }) => {
       console.error("Error saving question:", error);
       setModalMessage("Error saving question");
       setShowSuccessModal(true);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -154,7 +158,8 @@ const QuestionManager = ({ onBack }) => {
 
   const confirmDelete = async () => {
     if (!questionToDelete) return;
-    
+
+    setDeleting(true);
     try {
       const success = await deleteQuestionFromFirestore(questionToDelete.id);
       if (success) {
@@ -171,6 +176,7 @@ const QuestionManager = ({ onBack }) => {
       setModalMessage("Error deleting question");
       setShowSuccessModal(true);
     } finally {
+      setDeleting(false);
       setShowDeleteModal(false);
       setQuestionToDelete(null);
     }
@@ -203,10 +209,11 @@ const QuestionManager = ({ onBack }) => {
   };
 
   const confirmBulkDelete = async () => {
+    setBulkDeleting(true);
     try {
       const deletePromises = selectedQuestions.map(id => deleteQuestionFromFirestore(id));
       await Promise.all(deletePromises);
-      
+
       setModalMessage(`Successfully deleted ${selectedQuestions.length} question(s)!`);
       setShowSuccessModal(true);
       setSelectedQuestions([]);
@@ -217,6 +224,7 @@ const QuestionManager = ({ onBack }) => {
       setModalMessage("Error deleting questions");
       setShowSuccessModal(true);
     } finally {
+      setBulkDeleting(false);
       setShowBulkDeleteModal(false);
     }
   };
@@ -228,13 +236,13 @@ const QuestionManager = ({ onBack }) => {
       return;
     }
 
+    setBulkUpdating(true);
     try {
-      const updatePromises = selectedQuestions.map(id => {
-        const question = questions.find(q => q.id === id);
-        return updateQuestionInFirestore(id, { ...question, isActive });
-      });
+      const updatePromises = selectedQuestions.map(id =>
+        updateQuestionInFirestore(id, { isActive })
+      );
       await Promise.all(updatePromises);
-      
+
       const action = isActive ? "activated" : "deactivated";
       setModalMessage(`Successfully ${action} ${selectedQuestions.length} question(s)!`);
       setShowSuccessModal(true);
@@ -245,6 +253,8 @@ const QuestionManager = ({ onBack }) => {
       console.error("Error updating status:", error);
       setModalMessage("Error updating questions");
       setShowSuccessModal(true);
+    } finally {
+      setBulkUpdating(false);
     }
   };
 
@@ -283,6 +293,13 @@ const QuestionManager = ({ onBack }) => {
       </div>
     );
   }
+
+  const getSubmitButtonLabel = () => {
+    if (submitting) return "⏳ Please wait...";
+    if (editingQuestion) return "💾 Update Question";
+    return "➕ Add Question";
+  };
+  const submitButtonLabel = getSubmitButtonLabel();
 
   return (
     <div className="bg-gradient-to-br from-blue-50 via-white to-purple-50 min-h-screen">
@@ -379,19 +396,22 @@ const QuestionManager = ({ onBack }) => {
               </button>
               <button
                 onClick={() => handleBulkStatusChange(true)}
-                className="bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg font-medium text-sm cursor-pointer transition-all duration-200"
+                disabled={bulkUpdating}
+                className={`bg-green-700 hover:bg-green-800 text-white px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${bulkUpdating ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
               >
-                ✅ Activate Selected
+                {bulkUpdating ? "⏳ Please wait..." : "✅ Activate Selected"}
               </button>
               <button
                 onClick={() => handleBulkStatusChange(false)}
-                className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium text-sm cursor-pointer transition-all duration-200"
+                disabled={bulkUpdating}
+                className={`bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${bulkUpdating ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
               >
-                ⚠️ Deactivate Selected
+                {bulkUpdating ? "⏳ Please wait..." : "⚠️ Deactivate Selected"}
               </button>
               <button
                 onClick={handleBulkDelete}
-                className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium text-sm cursor-pointer transition-all duration-200"
+                disabled={bulkDeleting}
+                className={`bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${bulkDeleting ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
               >
                 🗑️ Delete Selected
               </button>
@@ -512,10 +532,16 @@ const QuestionManager = ({ onBack }) => {
                       type="text"
                       value={formData.topic}
                       onChange={(e) => setFormData({ ...formData, topic: e.target.value })}
+                      list="topic-suggestions"
                       className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       placeholder="e.g., Anatomy, Physiology"
                       required
                     />
+                    <datalist id="topic-suggestions">
+                      {uniqueTopics.map(topic => (
+                        <option key={topic} value={topic} />
+                      ))}
+                    </datalist>
                   </div>
 
                   <div>
@@ -537,13 +563,15 @@ const QuestionManager = ({ onBack }) => {
                 <div className="flex gap-3 pt-4 border-t-2 border-gray-200">
                   <button
                     type="submit"
-                    className="flex-1 bg-blue-700 hover:bg-blue-800 text-white px-8 py-3 rounded-lg font-bold shadow cursor-pointer transition-all duration-200"
+                    disabled={submitting}
+                    className={`flex-1 bg-blue-700 hover:bg-blue-800 text-white px-8 py-3 rounded-lg font-bold shadow transition-all duration-200 ${submitting ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                   >
-                    {editingQuestion ? "💾 Update Question" : "➕ Add Question"}
+                    {submitButtonLabel}
                   </button>
                   <button
                     type="button"
                     onClick={resetForm}
+                    disabled={submitting}
                     className="px-8 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-bold cursor-pointer transition-all duration-200"
                   >
                     Cancel
@@ -666,15 +694,17 @@ const QuestionManager = ({ onBack }) => {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowDeleteModal(false)}
+                    disabled={deleting}
                     className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold cursor-pointer transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={confirmDelete}
-                    className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold cursor-pointer transition-all"
+                    disabled={deleting}
+                    className={`flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-all ${deleting ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                   >
-                    Delete
+                    {deleting ? "⏳ Deleting..." : "Delete"}
                   </button>
                 </div>
               </div>
@@ -696,15 +726,17 @@ const QuestionManager = ({ onBack }) => {
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowBulkDeleteModal(false)}
+                    disabled={bulkDeleting}
                     className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-semibold cursor-pointer transition-all"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={confirmBulkDelete}
-                    className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold cursor-pointer transition-all"
+                    disabled={bulkDeleting}
+                    className={`flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-all ${bulkDeleting ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                   >
-                    Delete All
+                    {bulkDeleting ? "⏳ Deleting..." : "Delete All"}
                   </button>
                 </div>
               </div>
@@ -748,6 +780,8 @@ const QuestionManager = ({ onBack }) => {
 const TimerSettingsModal = ({ onClose }) => {
   const [timerMinutes, setTimerMinutes] = useState(20);
   const [loading, setLoading] = useState(true);
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showErrorMessage, setShowErrorMessage] = useState(false);
 
   useEffect(() => {
     loadTimerSettings();
@@ -782,11 +816,17 @@ const TimerSettingsModal = ({ onClose }) => {
         updatedAt: Date.now()
       });
       
-      alert('Timer settings updated successfully!');
-      onClose();
+      setShowSuccessMessage(true);
+      setTimeout(() => {
+        setShowSuccessMessage(false);
+        onClose();
+      }, 2000);
     } catch (error) {
       console.error('Error saving timer settings:', error);
-      alert('Failed to save timer settings');
+      setShowErrorMessage(true);
+      setTimeout(() => {
+        setShowErrorMessage(false);
+      }, 2000);
     }
   };
 
@@ -841,6 +881,20 @@ const TimerSettingsModal = ({ onClose }) => {
                 Save Settings
               </button>
             </div>
+
+            {/* Success/Error Messages */}
+            {showSuccessMessage && (
+              <div className="mt-4 p-4 bg-green-100 border-2 border-green-500 rounded-lg text-center">
+                <div className="text-3xl mb-2">✅</div>
+                <p className="text-green-800 font-semibold">Timer settings updated successfully!</p>
+              </div>
+            )}
+            {showErrorMessage && (
+              <div className="mt-4 p-4 bg-red-100 border-2 border-red-500 rounded-lg text-center">
+                <div className="text-3xl mb-2">❌</div>
+                <p className="text-red-800 font-semibold">Failed to save timer settings</p>
+              </div>
+            )}
           </div>
         )}
       </div>

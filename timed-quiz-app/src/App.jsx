@@ -12,16 +12,15 @@ import { db } from "./utils/firebase";
 import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { loadQuestions, loadCorrectAnswers } from "./utils/questionsLoader";
 
-const QUIZ_DURATION = 1200; // 20 minutes in seconds
-
 const App = () => {
   // Strict test mode: lock mode at quiz start for each user
   const [testModeAtStart, setTestModeAtStart] = useState(null);
   const [step, setStep] = useState("login");
+  const [timerSeconds, setTimerSeconds] = useState(1200);
   const [user, setUser] = useState(null);
   const [userInfo, setUserInfo] = useState({ name: "", mobile: "", regno: "" });
   const [answers, setAnswers] = useState([]);
-  const [timeLeft, setTimeLeft] = useState(QUIZ_DURATION);
+  const [timeLeft, setTimeLeft] = useState(1200);
   const [detailedResults, setDetailedResults] = useState([]);
   const [quizDuration, setQuizDuration] = useState("N/A");
   const [tabSwitchCount, setTabSwitchCount] = useState(0);
@@ -52,7 +51,11 @@ const App = () => {
       setCorrectAnswers(loadedAnswers);
     } catch (error) {
       console.error("Error loading questions:", error);
-      alert("Failed to load questions. Please refresh the page or contact the administrator.");
+      handleError(
+        "Failed to Load Questions",
+        "Unable to load test questions. Please refresh the page or contact the administrator.",
+        false
+      );
     } finally {
       setQuestionsLoading(false);
     }
@@ -103,6 +106,17 @@ const App = () => {
         setTestMode(snap.data().testMode || "post");
       } else {
         setTestMode("post");
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Load timer duration from Firestore and keep in sync
+  useEffect(() => {
+    const timerRef = doc(db, "quiz_settings", "timer");
+    const unsubscribe = onSnapshot(timerRef, (snap) => {
+      if (snap.exists()) {
+        setTimerSeconds(snap.data().seconds || 1200);
       }
     });
     return () => unsubscribe();
@@ -174,7 +188,7 @@ const App = () => {
     if (todayQuiz && todayQuiz.startedAt && !todayQuiz.completedAt) {
       // Quiz already started today but not completed
       const elapsed = Math.floor((Date.now() - todayQuiz.startedAt) / 1000);
-      const remaining = Math.max(QUIZ_DURATION - elapsed, 0);
+      const remaining = Math.max(timerSeconds - elapsed, 0);
 
       if (remaining > 0) {
         setUser(loggedInUser);
@@ -408,7 +422,7 @@ const App = () => {
       }
     }
 
-    setTimeLeft(QUIZ_DURATION);
+    setTimeLeft(timerSeconds);
     setAnswers(initialAnswers);
     setStep("quiz");
   };
@@ -492,11 +506,11 @@ const App = () => {
         // Use server calculation with a safeguard (0 to QUIZ_DURATION)
         timeTakenSec = Math.min(
           Math.max(0, Math.floor((completedAtTime - startedAtTime) / 1000)),
-          QUIZ_DURATION
+          timerSeconds
         );
 
         // Log any suspicious timing discrepancies
-        const clientSideCalc = QUIZ_DURATION - timeLeft;
+        const clientSideCalc = timerSeconds - timeLeft;
         if (Math.abs(clientSideCalc - timeTakenSec) > 60) {
           console.warn(
             `Timing discrepancy detected! Server calc: ${timeTakenSec}s, Client calc: ${clientSideCalc}s`
@@ -504,11 +518,11 @@ const App = () => {
         }
       } else {
         // Fallback to client-side timer if startedAt isn't available
-        timeTakenSec = Math.max(0, QUIZ_DURATION - timeLeft);
+        timeTakenSec = Math.max(0, timerSeconds - timeLeft);
       }
     } else {
       // Fallback to client-side timer if user isn't available
-      timeTakenSec = Math.max(0, QUIZ_DURATION - timeLeft);
+      timeTakenSec = Math.max(0, timerSeconds - timeLeft);
     }
 
     const mins = Math.floor(timeTakenSec / 60);
@@ -579,11 +593,13 @@ const App = () => {
         // Continue with local results even if Firestore save failed
         // The server-side function will eventually check for hanging quizzes
         
-        // Show an alert to the user so they're aware of the issue
+        // Show a warning modal to the user so they're aware of the issue
         // This is non-blocking, so the user can still see their results
-        alert("Warning: There was an issue saving your quiz results to our servers. " +
-              "Your results are displayed now, but you may need to contact support if " +
-              "they don't appear in your history later.");
+        handleError(
+          "Save Warning",
+          "There was an issue saving your quiz results to our servers. Your results are displayed now, but you may need to contact support if they don't appear in your history later.",
+          false
+        );
       }
 
       // Always update the UI with results, even if saving to Firestore failed
@@ -624,6 +640,7 @@ const App = () => {
             initialTabSwitchCount={tabSwitchCount}
             initialCopyAttemptCount={copyAttemptCount}
             questions={currentQuestions}
+            totalSeconds={timerSeconds}
           />
         )
       )}

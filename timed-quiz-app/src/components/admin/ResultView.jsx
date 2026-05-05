@@ -9,12 +9,14 @@ const ResultView = () => {
     viewing,
     setViewing,
     tableRef,
-    correctAnswers,
     emailSending,
     emailUserInProgress,
     setEmailSending,
     setEmailUserInProgress,
     setEmailToast,
+    setToastMessage,
+    setToastType,
+    setShowToast,
   } = useAdmin();
 
   const [currentQuestions, setCurrentQuestions] = useState([]);
@@ -29,7 +31,9 @@ const ResultView = () => {
         setDynamicCorrectAnswers(loadedAnswers);
       } catch (error) {
         console.error("Error loading questions in ResultView:", error);
-        alert("Failed to load questions. Please refresh the page.");
+        setToastMessage("Failed to load questions. Please refresh the page.");
+        setToastType("error");
+        setShowToast(true);
       } finally {
         setQuestionsLoading(false);
       }
@@ -44,7 +48,7 @@ const ResultView = () => {
 
   if (questionsLoading) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6">
           <div className="text-center">
             <div className="text-xl text-gray-600 mb-4">Loading questions...</div>
@@ -91,7 +95,7 @@ const ResultView = () => {
       clearTimeout(infoToastTimeout);
       
       // Auto dismiss success toast after 8 seconds
-      if (result && (result.success === true)) {
+      if (result?.success === true) {
         setTimeout(() => {
           setEmailToast((prev) => ({ ...prev, show: false }));
         }, 8000);
@@ -293,7 +297,7 @@ const ResultView = () => {
             </span>
             {viewing.emailSentAt && (
               <span className="text-sm text-gray-500">
-                ({new Date(viewing.emailSentAt.toDate()).toLocaleString()})
+                ({new Date(viewing.emailSentAt?.toDate?.() ?? viewing.emailSentAt).toLocaleString()})
               </span>
             )}
           </div>
@@ -325,7 +329,7 @@ const ResultView = () => {
           const q = currentQuestions[index];
           if (!q) return null; // Skip if question doesn't exist
 
-          const correct = correctAnswers[index]; // Use from component state instead of viewing object
+          const correct = dynamicCorrectAnswers[index];
           const isCorrect = selected === correct;
           const wasAnswered = typeof selected === "number";
 
@@ -377,7 +381,7 @@ const ResultView = () => {
           };
 
           // Use correctAnswers from state for legacy format too
-          const correct = correctAnswers[r.q - 1];
+          const correct = dynamicCorrectAnswers[r.q - 1];
           const selected = r.selected;
 
           return (

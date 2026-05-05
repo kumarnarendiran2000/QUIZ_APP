@@ -1,5 +1,5 @@
 // src/components/admin/ExportControls.jsx
-import React from "react";
+import React, { useState } from "react";
 import useAdmin from "./hooks/useAdmin";
 import { exportSubmissionsToExcel } from "../../utils/exportToExcel";
 import { exportSubmissionsToPDF } from "../../utils/exportToPDF";
@@ -8,20 +8,34 @@ const ExportControls = ({ filteredSubmissions }) => {
   const { submissions, toggleSort, isSorted, setShowMobileSnackbar } =
     useAdmin();
 
-  // Export to Excel handler - use filteredSubmissions if provided, otherwise use all submissions
-  const handleExportToExcel = () => {
-    const dataToExport = filteredSubmissions || submissions;
-    exportSubmissionsToExcel(dataToExport);
+  const [exportingPDF, setExportingPDF] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
+
+  const handleExportToPDF = () => {
+    setExportingPDF(true);
+    // Let React render the loading state before the synchronous PDF work blocks the thread
+    setTimeout(() => {
+      try {
+        exportSubmissionsToPDF(filteredSubmissions || submissions);
+        if (window.innerWidth <= 768) {
+          setShowMobileSnackbar(true);
+          setTimeout(() => setShowMobileSnackbar(false), 15000);
+        }
+      } finally {
+        setExportingPDF(false);
+      }
+    }, 50);
   };
 
-  // Export to PDF handler - use filteredSubmissions if provided, otherwise use all submissions
-  const handleExportToPDF = () => {
-    const dataToExport = filteredSubmissions || submissions;
-    exportSubmissionsToPDF(dataToExport);
-    if (window.innerWidth <= 768) {
-      setShowMobileSnackbar(true);
-      setTimeout(() => setShowMobileSnackbar(false), 15000); // Increased to 15 seconds
-    }
+  const handleExportToExcel = () => {
+    setExportingExcel(true);
+    setTimeout(() => {
+      try {
+        exportSubmissionsToExcel(filteredSubmissions || submissions);
+      } finally {
+        setExportingExcel(false);
+      }
+    }, 50);
   };
 
   return (
@@ -35,15 +49,17 @@ const ExportControls = ({ filteredSubmissions }) => {
         </button>
         <button
           onClick={handleExportToPDF}
-          className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 print:hidden cursor-pointer"
+          disabled={exportingPDF}
+          className={`bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 print:hidden ${exportingPDF ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
         >
-          Export to PDF
+          {exportingPDF ? "⏳ Generating..." : "Export to PDF"}
         </button>
         <button
           onClick={handleExportToExcel}
-          className="bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 print:hidden cursor-pointer"
+          disabled={exportingExcel}
+          className={`bg-green-600 text-white px-4 py-2 rounded shadow hover:bg-green-700 print:hidden ${exportingExcel ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
         >
-          Export to Excel
+          {exportingExcel ? "⏳ Generating..." : "Export to Excel"}
         </button>
       </div>
     </div>

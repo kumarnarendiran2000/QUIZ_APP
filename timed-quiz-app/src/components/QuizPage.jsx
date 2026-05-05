@@ -15,6 +15,7 @@ const QuizPage = ({
   initialTabSwitchCount = 0,
   initialCopyAttemptCount = 0,
   questions,
+  totalSeconds = 1200,
 }) => {
   const [tabSwitchCount, setTabSwitchCount] = useState(initialTabSwitchCount);
   const [showProctorWarning, setShowProctorWarning] = useState(false);
@@ -67,7 +68,7 @@ const QuizPage = ({
           const elapsedSec = Math.floor(
             (Date.now() - startedAtRef.current) / 1000
           );
-          const serverTimeLeft = Math.max(0, 1200 - elapsedSec); // 1200 = QUIZ_DURATION
+          const serverTimeLeft = Math.max(0, totalSeconds - elapsedSec);
 
           // Only update if there's a meaningful difference to avoid unnecessary re-renders
           if (Math.abs(serverTimeLeft - timeLeft) >= 1) {
@@ -125,7 +126,7 @@ const QuizPage = ({
         const elapsedSec = Math.floor(
           (Date.now() - startedAtRef.current) / 1000
         );
-        const serverTimeLeft = Math.max(0, 1200 - elapsedSec); // 1200 = QUIZ_DURATION
+        const serverTimeLeft = Math.max(0, totalSeconds - elapsedSec);
 
         if (Math.abs(serverTimeLeft - timeLeft) >= 2) {
           console.log(
@@ -339,14 +340,9 @@ const QuizPage = ({
     // eslint-disable-next-line
   }, []);
 
-  // Group questions by topic
-  const topics = [
-    "AIRWAY MANAGEMENT",
-    "TRAUMA MANAGEMENT",
-    "CARDIOPULMONARY RESUSCITATION (CPR)",
-    "BASIC PROCEDURES",
-  ];
-  const questionsByTopic = topics.map((topic) => ({
+  // Group questions by topic — derived dynamically so any admin-defined topic works
+  const uniqueTopics = [...new Set(questions.map((q) => q.topic))].filter(Boolean);
+  const questionsByTopic = uniqueTopics.map((topic) => ({
     topic,
     questions: questions.filter((q) => q.topic === topic),
   }));

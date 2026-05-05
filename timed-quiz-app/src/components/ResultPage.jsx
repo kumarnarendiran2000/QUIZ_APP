@@ -18,6 +18,7 @@ const ResultPage = ({
   const unansweredCount = detailedResults.length - answeredCount;
 
   const [correctAnswers, setCorrectAnswers] = useState([]);
+  const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
   // Removed unused emailError state
@@ -34,6 +35,7 @@ const ResultPage = ({
         const questionsData = await loadQuestionsWithCorrectAnswers();
         
         if (questionsData && questionsData.questions && questionsData.correctAnswers) {
+          setQuestions(questionsData.questions);
           setCorrectAnswers(questionsData.correctAnswers);
         } else {
           setFetchError(
@@ -88,15 +90,31 @@ const ResultPage = ({
     // Send email for both pre and post test after results are loaded
     const sendEmail = async () => {
       try {
+        console.log("sendEmail called with:", {
+          detailedResults: detailedResults?.length,
+          quizDuration,
+          questions: questions?.length,
+          correctAnswers: correctAnswers?.length
+        });
+        
         // First check if the submission has the required data before sending email
         // This prevents the "Meghana scenario" where email is sent but data is incomplete
-        if (!detailedResults || detailedResults.length === 0 || !quizDuration || quizDuration === "N/A") {
-          console.warn("Missing critical quiz data - skipping automatic email sending");
+        if (!detailedResults || detailedResults.length === 0) {
+          console.warn("Missing detailedResults - skipping automatic email sending");
           setShowToast(true);
           setToastType("error");
-          setToastMsg("Cannot send email - quiz data incomplete. Please contact support.");
+          setToastMsg("Cannot send email - quiz results incomplete. Please contact support.");
           return;
         }
+        
+        // Safety check: ensure questions are loaded
+        if (!questions || questions.length === 0) {
+          console.warn("Questions not loaded yet - skipping email sending");
+          return;
+        }
+        
+        // Note: quizDuration might be "N/A" if loaded from old data, but that's ok
+        // The backend will handle it gracefully
         
         setShowToast(true);
         setToastType("info");
@@ -157,6 +175,7 @@ const ResultPage = ({
       detailedResults &&
       !loading &&
       correctAnswers.length > 0 &&
+      questions.length > 0 &&
       !emailAlreadySent
     ) {
       sendEmail();
@@ -166,6 +185,7 @@ const ResultPage = ({
     detailedResults,
     loading,
     correctAnswers,
+    questions,
     answers,
     quizDuration,
     correct,
@@ -187,13 +207,8 @@ const ResultPage = ({
     );
   }
 
-  const topics = [
-    "AIRWAY MANAGEMENT",
-    "TRAUMA MANAGEMENT",
-    "CARDIOPULMONARY RESUSCITATION (CPR)",
-    "BASIC PROCEDURES",
-  ];
-  const questionsByTopic = topics.map((topic) => ({
+  const uniqueTopics = [...new Set(questions.map((q) => q.topic))].filter(Boolean);
+  const questionsByTopic = uniqueTopics.map((topic) => ({
     topic,
     questions: questions
       .map((q, i) => ({ ...q, index: i }))
