@@ -3,7 +3,14 @@
     "allow": [
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\kumar\\\\Documents\\\\QUIZ_APP\\\\timed-quiz-app\" -Recurse -Force)",
       "Bash(Select-Object -First 100)",
-      "Bash(Format-Table FullName)"
+      "Bash(Format-Table FullName)",
+      "Bash(pnpm run *)",
+      "Bash(firebase deploy *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"console.log\\(require\\('c:/Users/kumar/Documents/QUIZ_APP/timed-quiz-app/functions/node_modules/jsonwebtoken/package.json'\\).version\\)\")",
+      "Bash(Remove-Item -Recurse -Force node_modules)",
+      "PowerShell(npm install --prefix \"c:\\\\Users\\\\kumar\\\\Documents\\\\QUIZ_APP\\\\timed-quiz-app\\\\functions\" 2>&1)",
+      "Bash(pnpm install *)"
     ]
   }
 }
