@@ -9,6 +9,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const sgMail = require("@sendgrid/mail");
 const PDFDocument = require("pdfkit");
+const path = require("path");
 
 // Initialize Firebase Admin SDK.
 admin.initializeApp();
@@ -21,7 +22,7 @@ if (process.env.SENDGRID_API_KEY) {
   console.warn("WARNING: SENDGRID_API_KEY is not set. Email function will fail at runtime.");
 }
 
-function generateCertificatePDF(name, regno, testType, dateStr) {
+function generateCertificatePDF(name, regno) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({ size: "A4", layout: "landscape", margin: 0 });
     const chunks = [];
@@ -32,120 +33,35 @@ function generateCertificatePDF(name, regno, testType, dateStr) {
     const W = doc.page.width;   // 841.89
     const H = doc.page.height;  // 595.28
 
-    // Helper: returns x so that text is horizontally centered on the page
-    const center = (text) => Math.max(30, (W - doc.widthOfString(text)) / 2);
+    // Image: 1600x1138px → scale to A4 landscape
+    // Scale x: 841.89/1600 = 0.5262, Scale y: 595.28/1138 = 0.5231
+    // Overlay positions below derived from: image_px * scale
 
-    // ── Background ───────────────────────────────────────
-    doc.rect(0, 0, W, H).fill("#faf8f3");
+    const templatePath = path.join(__dirname, "certificate_template.png");
+    doc.image(templatePath, 0, 0, { width: W, height: H });
 
-    // ── Outer border (navy, 14px) ────────────────────────
-    const bw = 14;
-    doc.rect(0, 0, W, bw).fill("#1a237e");
-    doc.rect(0, H - bw, W, bw).fill("#1a237e");
-    doc.rect(0, 0, bw, H).fill("#1a237e");
-    doc.rect(W - bw, 0, bw, H).fill("#1a237e");
+    const certDate = new Date().toLocaleDateString("en-IN", {
+      day: "2-digit", month: "long", year: "numeric", timeZone: "Asia/Kolkata",
+    });
 
-    // ── Inner gold accent lines ──────────────────────────
-    const al = 20;
-    doc.rect(al, al, W - 2 * al, 2).fill("#c5a028");
-    doc.rect(al, H - al - 2, W - 2 * al, 2).fill("#c5a028");
-    doc.rect(al, al, 2, H - 2 * al).fill("#c5a028");
-    doc.rect(W - al - 2, al, 2, H - 2 * al).fill("#c5a028");
+    doc.font("Helvetica-Bold").fillColor("#111111");
 
-    // ── Corner L-brackets (gold) ─────────────────────────
-    const co = 27, cl = 20;
-    [[co, co, 1, 1], [W - co, co, -1, 1], [co, H - co, 1, -1], [W - co, H - co, -1, -1]]
-      .forEach(([cx, cy, dx, dy]) => {
-        doc.moveTo(cx, cy + dy * cl).lineTo(cx, cy).lineTo(cx + dx * cl, cy)
-           .lineWidth(2.5).stroke("#c5a028");
-      });
+    // Name — after "presented to"
+    doc.fontSize(19).text((name || "Participant").toUpperCase(), 405, 306, { lineBreak: false });
 
-    // ── Header band ──────────────────────────────────────
-    doc.rect(24, 24, W - 48, 68).fill("#1a237e");
+    // Registration No — after "Registration number"
+    doc.fontSize(18).text((regno || "-").toUpperCase(), 472, 348, { lineBreak: false });
 
-    doc.font("Helvetica-Bold").fontSize(19).fillColor("#ffffff");
-    const h1 = "DR. NK BHAT SKILL LAB";
-    doc.text(h1, center(h1), 35, { lineBreak: false });
+    // "held from" date
+    doc.fontSize(16).text(certDate.toUpperCase(), 400, 420, { lineBreak: false });
 
-    doc.font("Helvetica").fontSize(11).fillColor("#f0c040");
-    const h2 = "Navodaya Medical College, Raichur, Karnataka";
-    doc.text(h2, center(h2), 60, { lineBreak: false });
-
-    // Gold bar below header
-    doc.rect(24, 92, W - 48, 4).fill("#c5a028");
-
-    // ── CERTIFICATE (large title) ────────────────────────
-    doc.font("Helvetica-Bold").fontSize(44).fillColor("#1a237e");
-    const t1 = "CERTIFICATE";
-    doc.text(t1, center(t1), 110, { lineBreak: false });
-
-    // ── OF PARTICIPATION (subtitle) ──────────────────────
-    doc.font("Helvetica-Bold").fontSize(16).fillColor("#1a237e");
-    const t2 = "OF PARTICIPATION";
-    doc.text(t2, center(t2), 162, { lineBreak: false });
-
-    // ── Ornamental divider ───────────────────────────────
-    const ornY = 188;
-    const midX = W / 2;
-    doc.moveTo(midX - 200, ornY).lineTo(midX - 12, ornY).lineWidth(1).stroke("#c5a028");
-    doc.fillColor("#c5a028")
-       .moveTo(midX, ornY - 6).lineTo(midX + 7, ornY)
-       .lineTo(midX, ornY + 6).lineTo(midX - 7, ornY)
-       .closePath().fill();
-    doc.moveTo(midX + 12, ornY).lineTo(midX + 200, ornY).lineWidth(1).stroke("#c5a028");
-
-    // ── Body text ────────────────────────────────────────
-    doc.font("Helvetica").fontSize(14).fillColor("#777777");
-    const b1 = "This is to certify that";
-    doc.text(b1, center(b1), 206, { lineBreak: false });
-
-    // Name
-    doc.font("Helvetica-Bold").fontSize(30).fillColor("#1a237e");
-    const nameStr = name || "Participant";
-    const nameW = doc.widthOfString(nameStr);
-    const nameX = (W - nameW) / 2;
-    doc.text(nameStr, nameX, 228, { lineBreak: false });
-    doc.moveTo(nameX, 267).lineTo(nameX + nameW, 267).lineWidth(1.5).stroke("#c5a028");
-
-    let bY = 276;
-    if (regno) {
-      doc.font("Helvetica").fontSize(13).fillColor("#888888");
-      const regText = `Registration No: ${regno}`;
-      doc.text(regText, center(regText), bY, { lineBreak: false });
-      bY += 22;
-    }
-
-    doc.font("Helvetica").fontSize(14).fillColor("#444444");
-    const p1 = "has successfully participated in the";
-    doc.text(p1, center(p1), bY, { lineBreak: false });
-
-    doc.font("Helvetica-Bold").fontSize(20).fillColor("#1a237e");
-    doc.text(testType, center(testType), bY + 24, { lineBreak: false });
-
-    doc.font("Helvetica").fontSize(13).fillColor("#555555");
-    const p2 = "organized by Dr. NK Bhat Skill Lab, Navodaya Medical College, Raichur";
-    doc.text(p2, center(p2), bY + 54, { lineBreak: false });
-
-    // ── Date (centered) ──────────────────────────────────
-    const dateSecY = bY + 92;
-    doc.moveTo(60, dateSecY).lineTo(W - 60, dateSecY).lineWidth(1).stroke("#c5a028");
-
-    doc.font("Helvetica").fontSize(10).fillColor("#999999");
-    const dl = "DATE";
-    doc.text(dl, center(dl), dateSecY + 12, { lineBreak: false });
-
-    doc.font("Helvetica-Bold").fontSize(13).fillColor("#333333");
-    doc.text(dateStr, center(dateStr), dateSecY + 28, { lineBreak: false });
-
-    // ── Footer strip ─────────────────────────────────────
-    doc.rect(24, H - 34, W - 48, 14).fill("#1a237e");
-    doc.font("Helvetica").fontSize(9).fillColor("#f0c040");
-    const footer = "Dr. NK Bhat Skill Lab  ·  Navodaya Medical College, Raichur, Karnataka";
-    doc.text(footer, center(footer), H - 30, { lineBreak: false });
+    // "to" date — same date
+    doc.fontSize(16).text(certDate.toUpperCase(), 570, 420, { lineBreak: false });
 
     doc.end();
   });
 }
+
 
 /**
  * Sends a quiz result email to a user.
@@ -655,7 +571,7 @@ exports.sendQuizResultEmail = onCall(
         const settingsDoc = await admin.firestore().collection("quiz_settings").doc("default").get();
         const certificateEnabled = settingsDoc.exists ? settingsDoc.data().certificateEnabled === true : false;
         if (certificateEnabled) {
-          const certBuffer = await generateCertificatePDF(name, regno, testType, istDate);
+          const certBuffer = await generateCertificatePDF(name, regno);
           msg.attachments = [
             {
               content: certBuffer.toString("base64"),

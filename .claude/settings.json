@@ -10,7 +10,8 @@
       "Bash(node -e \"console.log\\(require\\('c:/Users/kumar/Documents/QUIZ_APP/timed-quiz-app/functions/node_modules/jsonwebtoken/package.json'\\).version\\)\")",
       "Bash(Remove-Item -Recurse -Force node_modules)",
       "PowerShell(npm install --prefix \"c:\\\\Users\\\\kumar\\\\Documents\\\\QUIZ_APP\\\\timed-quiz-app\\\\functions\" 2>&1)",
-      "Bash(pnpm install *)"
+      "Bash(pnpm install *)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const buf=fs.readFileSync\\('certificate_template.png'\\); const w=buf.readUInt32BE\\(16\\); const h=buf.readUInt32BE\\(20\\); console.log\\('Width:',w,'Height:',h\\);\")"
     ]
   }
 }
