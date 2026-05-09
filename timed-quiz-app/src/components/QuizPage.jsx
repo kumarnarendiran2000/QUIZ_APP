@@ -1,5 +1,5 @@
 // src/components/QuizPage.jsx
-import React, { useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import {
   handleAutoSubmit,
   updateSubmissionStatus,
@@ -33,6 +33,18 @@ const QuizPage = ({
 
   // Store the startedAt timestamp locally for more accurate timing
   const startedAtRef = useRef(null);
+
+  // Auto-submit helper: write status to Firestore first, then trigger onSubmit after popup delay
+  const triggerAutoSubmit = useCallback(async (reason) => {
+    if (user?.uid) {
+      try {
+        await updateSubmissionStatus(user, "auto", reason);
+      } catch (e) {
+        console.error("Failed to write auto-submit status:", e);
+      }
+    }
+    setTimeout(() => onSubmit(), 2000);
+  }, [user, onSubmit]);
 
   useEffect(() => {
     // Timer effect - countdown logic with server-time synchronization
@@ -188,15 +200,7 @@ const QuizPage = ({
               setShowProctorWarning(false);
               setProctorAutoSubmit(true);
               setSubmitting(true);
-
-              // Update Firestore with auto-submit reason for tab switching timeout
-              if (user?.uid) {
-                updateSubmissionStatus(user, "auto", "tabSwitchTimeout");
-              }
-
-              setTimeout(() => {
-                onSubmit();
-              }, 2000); // Show the auto-submit popup for 2 seconds
+              triggerAutoSubmit("tabSwitchTimeout");
             }
             return 0;
           }
@@ -209,21 +213,18 @@ const QuizPage = ({
     }
   }, [showProctorWarning, onSubmit, user]);
 
-  // If proctorAutoSubmit is set (after 5th switch or timeout), always auto-submit
+  // If proctorAutoSubmit is set (after max switch or timeout), always auto-submit
   useEffect(() => {
     if (proctorAutoSubmit && !submitting) {
       setSubmitting(true);
-
-      // Update Firestore with auto-submit reason for max tab switches reached
-      if (user?.uid && tabSwitchCount >= MAX_TAB_SWITCHES) {
-        updateSubmissionStatus(user, "auto", "maxTabSwitches");
+      const reason = tabSwitchCount >= MAX_TAB_SWITCHES ? "maxTabSwitches" : null;
+      if (reason) {
+        triggerAutoSubmit(reason);
+      } else {
+        setTimeout(() => onSubmit(), 2000);
       }
-
-      setTimeout(() => {
-        onSubmit();
-      }, 2000); // Show the auto-submit popup for 2 seconds
     }
-  }, [proctorAutoSubmit, onSubmit, submitting, user, tabSwitchCount]);
+  }, [proctorAutoSubmit, onSubmit, submitting, tabSwitchCount, triggerAutoSubmit]);
 
   // Prevent copy and show warning
   useEffect(() => {
@@ -254,17 +255,9 @@ const QuizPage = ({
       setShowCopyWarning(false);
       setProctorAutoSubmit(true);
       setSubmitting(true);
-
-      // Update Firestore with auto-submit reason
-      if (user?.uid) {
-        updateSubmissionStatus(user, "auto", "maxCopyAttempts");
-      }
-
-      setTimeout(() => {
-        onSubmit();
-      }, 2000); // Show the auto-submit popup for 2 seconds
+      triggerAutoSubmit("maxCopyAttempts");
     }
-  }, [copyAttemptCount, submitting, onSubmit, user]);
+  }, [copyAttemptCount, submitting, triggerAutoSubmit]);
 
   // Restore copyAttemptCount from Firestore on mount (if present)
   useEffect(() => {

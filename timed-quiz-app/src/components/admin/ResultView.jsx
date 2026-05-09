@@ -124,6 +124,22 @@ const ResultView = () => {
     }
   };
 
+  const getSubmissionLabel = () => {
+    if (viewing.submissionType === "auto") return "Auto";
+    if (viewing.submissionType === "manual") {
+      return viewing.completedAt < 1720900800000 ? "Legacy" : "Manual";
+    }
+    return "Not Submitted";
+  };
+
+  const getSubmissionClass = () => {
+    if (viewing.submissionType === "auto") return "text-orange-700";
+    if (viewing.submissionType === "manual") {
+      return viewing.completedAt < 1720900800000 ? "text-gray-700" : "text-blue-700";
+    }
+    return "text-gray-500";
+  };
+
   return (
     <div
       id="result-view"
@@ -224,22 +240,8 @@ const ResultView = () => {
             <div className="px-3 py-2 rounded-md bg-orange-50 text-gray-700 flex flex-wrap justify-center gap-x-4 gap-y-2">
               <div className="flex-shrink-0 whitespace-nowrap">
                 📝 Submission Type:{" "}
-                <strong
-                  className={
-                    viewing.submissionType === "auto"
-                      ? "text-orange-700"
-                      : viewing.submissionType === "manual" &&
-                        viewing.completedAt < 1720900800000
-                      ? "text-gray-700"
-                      : "text-blue-700"
-                  }
-                >
-                  {viewing.submissionType === "auto"
-                    ? "Auto"
-                    : viewing.submissionType === "manual" &&
-                      viewing.completedAt < 1720900800000
-                    ? "Legacy"
-                    : "Manual"}
+                <strong className={getSubmissionClass()}>
+                  {getSubmissionLabel()}
                 </strong>
               </div>
               {viewing.submissionType === "auto" && (

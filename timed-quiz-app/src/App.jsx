@@ -243,12 +243,10 @@ const App = () => {
         // Import saveQuizResponse function
         const { saveQuizResponse } = await import("./utils/quizStorage");
 
-        // Update device information in Firestore
+        // Update device information in Firestore on resume
+        // Don't write submissionType here — it should only be set on actual submission
         await saveQuizResponse(loggedInUser.uid, currentTestMode, {
           ...deviceInfo,
-          // Keep existing submission type and reason if present
-          submissionType: todayQuiz.submissionType || "manual",
-          autoSubmitReason: todayQuiz.autoSubmitReason || null,
         });
 
         if (
@@ -400,6 +398,9 @@ const App = () => {
         };
   
         // Save the quiz with our new format
+        // Note: submissionType / autoSubmitReason are intentionally NOT set here —
+        // they're written only on actual submission (manual or auto), so the admin
+        // dashboard doesn't show "manual" before the user has actually submitted.
         await saveQuizResponse(user.uid, mode, {
           name: userInfo.name,
           email: user.email,
@@ -409,11 +410,7 @@ const App = () => {
           ...(currentStartedAt ? {} : { startedAt: Date.now() }),
           answers: initialAnswers,
           testModeAtStart: mode,
-          // Add device information
           ...deviceData,
-          // Initialize submission type
-          submissionType: "manual", // Will be updated to "auto" if auto-submitted
-          autoSubmitReason: null, // Will be filled if auto-submitted
         });
       } catch (error) {
         console.error("Error saving initial quiz data:", error);
@@ -564,7 +561,7 @@ const App = () => {
               unansweredCount,
               score: correctCount,
               correctCount,
-              wrongCount: currentQuestions.length - correctCount,
+              wrongCount: answeredCount - correctCount,
               detailedResults,
               quizDuration,
               completedAt: Date.now(), // Use fresh timestamp

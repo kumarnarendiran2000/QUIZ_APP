@@ -15,7 +15,6 @@ const ResultPage = ({
   const correct = detailedResults.filter((r) => r.isCorrect).length;
   const wrong = detailedResults.length - correct;
   const answeredCount = answers.filter((a) => typeof a === "number").length;
-  const unansweredCount = detailedResults.length - answeredCount;
 
   const [correctAnswers, setCorrectAnswers] = useState([]);
   const [questions, setQuestions] = useState([]);
@@ -60,17 +59,6 @@ const ResultPage = ({
               "Email was already sent previously. Skipping email send."
             );
             setEmailAlreadySent(true);
-          } else {
-            // Also check the old document ID format as a fallback
-            const oldFormatRef = doc(db, "quiz_responses", auth.currentUser.uid);
-            const oldFormatSnap = await getDoc(oldFormatRef);
-            
-            if (oldFormatSnap.exists() && oldFormatSnap.data().emailSent === true) {
-              console.log(
-                "Email was already sent previously in old document format. Skipping email send."
-              );
-              setEmailAlreadySent(true);
-            }
           }
         }
       } catch (error) {
@@ -97,19 +85,10 @@ const ResultPage = ({
           correctAnswers: correctAnswers?.length
         });
         
-        // First check if the submission has the required data before sending email
-        // This prevents the "Meghana scenario" where email is sent but data is incomplete
-        if (!detailedResults || detailedResults.length === 0) {
-          console.warn("Missing detailedResults - skipping automatic email sending");
-          setShowToast(true);
-          setToastType("error");
-          setToastMsg("Cannot send email - quiz results incomplete. Please contact support.");
-          return;
-        }
-        
-        // Safety check: ensure questions are loaded
-        if (!questions || questions.length === 0) {
-          console.warn("Questions not loaded yet - skipping email sending");
+        // Safety check: ensure questions and correct answers are loaded
+        // (auto-submit users may have 0 answers — that's still a valid result that should be emailed)
+        if (!questions || questions.length === 0 || !correctAnswers || correctAnswers.length === 0) {
+          console.warn("Questions or correct answers not loaded yet - skipping email sending");
           return;
         }
         
@@ -139,12 +118,12 @@ const ResultPage = ({
           answers,
           detailedResults: normalizedResults,
           correctAnswers,
-          allQuestions: detailedResults.map(r => ({ question: r.question, options: r.options })),
+          allQuestions: questions.map((q) => ({ question: q.question, options: q.options })),
           quizDurationFromFrontend: quizDuration,
           testModeFromFrontend: testMode,
           correct,
           wrong,
-          total: detailedResults.length,
+          total: questions.length,
           score: correct,
         });
         console.log("Test result email sent successfully.");
@@ -274,7 +253,7 @@ const ResultPage = ({
           <p className="text-lg font-medium">
             <strong className="text-indigo-700">Score:</strong>{" "}
             <span className="text-xl font-bold">
-              {correct} / {detailedResults.length}
+              {correct} / {questions.length}
             </span>
           </p>
           <p>
@@ -290,7 +269,7 @@ const ResultPage = ({
               🟦 Answered: {answeredCount}
             </span>{" "}
             <span className="inline-block bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm font-medium">
-              ⬜ Unanswered: {unansweredCount}
+              ⬜ Unanswered: {Math.max(0, questions.length - answeredCount)}
             </span>
           </p>
           <p className="text-lg">
