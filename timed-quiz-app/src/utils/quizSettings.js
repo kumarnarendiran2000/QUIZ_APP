@@ -18,3 +18,17 @@ export async function setTestMode(mode) {
   const ref = doc(db, SETTINGS_DOC, SETTINGS_ID);
   await setDoc(ref, { testMode: mode }, { merge: true });
 }
+
+export async function getCertificateEnabled() {
+  const ref = doc(db, SETTINGS_DOC, SETTINGS_ID);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    return snap.data().certificateEnabled === true;
+  }
+  return false;
+}
+
+export async function setCertificateEnabled(enabled) {
+  const ref = doc(db, SETTINGS_DOC, SETTINGS_ID);
+  await setDoc(ref, { certificateEnabled: enabled }, { merge: true });
+}

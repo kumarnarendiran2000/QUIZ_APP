@@ -5,6 +5,8 @@ import { db } from "../../utils/firebase";
 import {
   getTestMode,
   setTestMode as saveTestMode,
+  getCertificateEnabled,
+  setCertificateEnabled as saveCertificateEnabled,
 } from "../../utils/quizSettings";
 
 // Create the context
@@ -14,6 +16,10 @@ export const AdminProvider = ({ children }) => {
   // Test mode state
   const [testMode, setTestMode] = useState("post");
   const [testModeLoading, setTestModeLoading] = useState(true);
+
+  // Certificate toggle state
+  const [certificateEnabled, setCertificateEnabled] = useState(false);
+  const [certificateLoading, setCertificateLoading] = useState(true);
 
   // Table data state
   const [submissions, setSubmissions] = useState([]);
@@ -66,13 +72,15 @@ export const AdminProvider = ({ children }) => {
   // Mobile snackbar state
   const [showMobileSnackbar, setShowMobileSnackbar] = useState(false);
 
-  // Load test mode from Firestore on mount
+  // Load test mode and certificate setting from Firestore on mount
   useEffect(() => {
     let mounted = true;
-    getTestMode().then((mode) => {
+    Promise.all([getTestMode(), getCertificateEnabled()]).then(([mode, certEnabled]) => {
       if (mounted) {
         setTestMode(mode);
         setTestModeLoading(false);
+        setCertificateEnabled(certEnabled);
+        setCertificateLoading(false);
       }
     });
     return () => {
@@ -184,6 +192,15 @@ export const AdminProvider = ({ children }) => {
     setTestModeLoading(false);
   };
 
+  // Handle certificate toggle
+  const handleCertificateToggle = async () => {
+    const next = !certificateEnabled;
+    setCertificateEnabled(next);
+    setCertificateLoading(true);
+    await saveCertificateEnabled(next);
+    setCertificateLoading(false);
+  };
+
   // Toggle sorting
   const toggleSort = () => {
     if (!isSorted) {
@@ -264,8 +281,13 @@ export const AdminProvider = ({ children }) => {
     showMobileSnackbar,
     setShowMobileSnackbar,
 
+    // Certificate toggle
+    certificateEnabled,
+    certificateLoading,
+
     // Functions
     handleTestModeChange,
+    handleCertificateToggle,
     toggleSort,
     fetchCorrectAnswers,
   };
